@@ -1,10 +1,27 @@
 {
-  "name": "csap-sbom-security",
-  "displayName": "CSAP SBOM Security",
+  "name": "sbom-tool",
+  "displayName": "SBOM Tool",
   "description": "Generate SBOM and run vulnerability checks for the current workspace",
   "version": "0.1.0",
-  "publisher": "internal",
-  "private": true,
+  "publisher": "masahirocom",
+  "private": false,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/masahirocom/sbom-tool.git"
+  },
+  "bugs": {
+    "url": "https://github.com/masahirocom/sbom-tool/issues"
+  },
+  "homepage": "https://github.com/masahirocom/sbom-tool#readme",
+  "keywords": [
+    "sbom",
+    "cyclonedx",
+    "spdx",
+    "vulnerability",
+    "trivy",
+    "npm-audit"
+  ],
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -19,34 +36,34 @@
     "package.json"
   ],
   "activationEvents": [
-    "onCommand:csapSbom.generateSbom",
-    "onCommand:csapSbom.scanVulnerabilities",
-    "onCommand:csapSbom.generateAndScan"
+    "onCommand:sbomTool.generateSbom",
+    "onCommand:sbomTool.scanVulnerabilities",
+    "onCommand:sbomTool.generateAndScan"
   ],
   "contributes": {
     "commands": [
       {
-        "command": "csapSbom.generateSbom",
-        "title": "CSAP SBOM: Generate SBOM"
+        "command": "sbomTool.generateSbom",
+        "title": "SBOM Tool: Generate SBOM"
       },
       {
-        "command": "csapSbom.scanVulnerabilities",
-        "title": "CSAP SBOM: Scan Vulnerabilities"
+        "command": "sbomTool.scanVulnerabilities",
+        "title": "SBOM Tool: Scan Vulnerabilities"
       },
       {
-        "command": "csapSbom.generateAndScan",
-        "title": "CSAP SBOM: Generate SBOM + Scan Vulnerabilities"
+        "command": "sbomTool.generateAndScan",
+        "title": "SBOM Tool: Generate SBOM + Scan Vulnerabilities"
       }
     ],
     "configuration": {
-      "title": "CSAP SBOM Security",
+      "title": "SBOM Tool",
       "properties": {
-        "csapSbom.outputDirectory": {
+        "sbomTool.outputDirectory": {
           "type": "string",
-          "default": ".csap-sbom",
+          "default": ".sbom-tool",
           "description": "Output directory (relative to workspace root) for generated SBOM and vulnerability reports."
         },
-        "csapSbom.defaultSbomFormat": {
+        "sbomTool.defaultSbomFormat": {
           "type": "string",
           "enum": [
             "cyclonedx-json",
@@ -55,7 +72,7 @@
           "default": "cyclonedx-json",
           "description": "Default SBOM export format."
         },
-        "csapSbom.vulnerabilityScanner": {
+        "sbomTool.vulnerabilityScanner": {
           "type": "string",
           "enum": [
             "auto",

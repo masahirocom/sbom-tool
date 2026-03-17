@@ -1,16 +1,16 @@
-# CSAP SBOM Security (Internal)
+# SBOM Tool
 
 この拡張は、現在開いているワークスペースに対して **SBOM生成** と **脆弱性スキャン** をローカル実行します。
 
 ## Commands
 
-- `CSAP SBOM: Generate SBOM`
-- `CSAP SBOM: Scan Vulnerabilities`
-- `CSAP SBOM: Generate SBOM + Scan Vulnerabilities`
+- `SBOM Tool: Generate SBOM`
+- `SBOM Tool: Scan Vulnerabilities`
+- `SBOM Tool: Generate SBOM + Scan Vulnerabilities`
 
 ## Output
 
-デフォルトではワークスペース直下の `.csap-sbom/` に出力されます。
+デフォルトではワークスペース直下の `.sbom-tool/` に出力されます。
 
 - `sbom-raw-*.json` : 解析内部SBOM
 - `sbom-cyclonedx-*.json` または `sbom-spdx-*.spdx` : エクスポートSBOM
@@ -18,11 +18,11 @@
 
 ## Settings
 
-- `csapSbom.outputDirectory` (default: `.csap-sbom`)
-- `csapSbom.defaultSbomFormat` (default: `cyclonedx-json`)
+- `sbomTool.outputDirectory` (default: `.sbom-tool`)
+- `sbomTool.defaultSbomFormat` (default: `cyclonedx-json`)
   - `cyclonedx-json`
   - `spdx`
-- `csapSbom.vulnerabilityScanner` (default: `auto`)
+- `sbomTool.vulnerabilityScanner` (default: `auto`)
   - `auto`: Trivy優先、失敗時 npm audit
   - `trivy`: Trivyのみ
   - `npm-audit`: npm auditのみ
@@ -39,3 +39,7 @@ cd vscode-extension/csap-sbom-security
 npm install
 npx @vscode/vsce package --allow-missing-repository --skip-license
 ```
+
+## License
+
+MIT

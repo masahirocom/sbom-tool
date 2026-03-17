@@ -10,15 +10,15 @@ const {
 } = require('./lib/scanner');
 
 function activate(context) {
-  const generateSbomCommand = vscode.commands.registerCommand('csapSbom.generateSbom', async () => {
+  const generateSbomCommand = vscode.commands.registerCommand('sbomTool.generateSbom', async () => {
     await runGenerateSbom(vscode);
   });
 
-  const scanVulnerabilityCommand = vscode.commands.registerCommand('csapSbom.scanVulnerabilities', async () => {
+  const scanVulnerabilityCommand = vscode.commands.registerCommand('sbomTool.scanVulnerabilities', async () => {
     await runVulnerabilityScan(vscode);
   });
 
-  const generateAndScanCommand = vscode.commands.registerCommand('csapSbom.generateAndScan', async () => {
+  const generateAndScanCommand = vscode.commands.registerCommand('sbomTool.generateAndScan', async () => {
     await runGenerateAndScan(vscode);
   });
 
@@ -51,8 +51,8 @@ async function pickTargetFolder(vscodeApi) {
 }
 
 function ensureOutputDirectory(vscodeApi, workspacePath) {
-  const config = vscodeApi.workspace.getConfiguration('csapSbom');
-  const outputDirectory = config.get('outputDirectory', '.csap-sbom');
+  const config = vscodeApi.workspace.getConfiguration('sbomTool');
+  const outputDirectory = config.get('outputDirectory', '.sbom-tool');
   const outputPath = path.resolve(workspacePath, outputDirectory);
   fs.mkdirSync(outputPath, { recursive: true });
   return outputPath;
@@ -77,7 +77,7 @@ async function runGenerateSbom(vscodeApi) {
       cancellable: false,
     },
     async () => {
-      const config = vscodeApi.workspace.getConfiguration('csapSbom');
+      const config = vscodeApi.workspace.getConfiguration('sbomTool');
       const defaultFormat = config.get('defaultSbomFormat', 'cyclonedx-json');
 
       const sbom = generateSBOM(targetFolder.uri.fsPath);
@@ -117,7 +117,7 @@ async function runVulnerabilityScan(vscodeApi) {
       cancellable: false,
     },
     async () => {
-      const config = vscodeApi.workspace.getConfiguration('csapSbom');
+      const config = vscodeApi.workspace.getConfiguration('sbomTool');
       const scannerPreference = config.get('vulnerabilityScanner', 'auto');
 
       const scanResult = await scanVulnerabilities(targetFolder.uri.fsPath, scannerPreference);
@@ -149,7 +149,7 @@ async function runGenerateAndScan(vscodeApi) {
     async (progress) => {
       const workspacePath = targetFolder.uri.fsPath;
       const outputPath = ensureOutputDirectory(vscodeApi, workspacePath);
-      const config = vscodeApi.workspace.getConfiguration('csapSbom');
+      const config = vscodeApi.workspace.getConfiguration('sbomTool');
       const scannerPreference = config.get('vulnerabilityScanner', 'auto');
       const defaultFormat = config.get('defaultSbomFormat', 'cyclonedx-json');
 

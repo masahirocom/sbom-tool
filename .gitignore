@@ -1,4 +1,4 @@
 node_modules/
 *.vsix
 .DS_Store
-.csap-sbom/node_modules
+.sbom-tool/
