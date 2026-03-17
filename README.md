@@ -12,7 +12,7 @@ Use this file for installation:
 - [releases/sbom-tool-latest.vsix](releases/sbom-tool-latest.vsix)
 
 You can also use a version-pinned file in [releases](releases).
-Current version example: `releases/sbom-tool-0.1.1.vsix`
+Versioned example: `releases/sbom-tool-<version>.vsix`
 
 ## Install from Marketplace (recommended)
 

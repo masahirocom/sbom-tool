@@ -12,7 +12,7 @@ SBOMツールは、現在開いているワークスペースに対してSBOM生
 - [releases/sbom-tool-latest.vsix](releases/sbom-tool-latest.vsix)
 
 バージョン固定で使いたい場合は [releases](releases) 配下のファイルを選択してください。
-現在の例: `releases/sbom-tool-0.1.1.vsix`
+例: `releases/sbom-tool-<version>.vsix`
 
 ## Marketplaceからインストール（推奨）
 
