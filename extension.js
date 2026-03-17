@@ -173,6 +173,19 @@ function buildVulnerabilityHtmlReport(scanResult, workspacePath) {
 }
 
 function buildProjectCheckMarkdown(environment, workspacePath) {
+  let recommendation;
+  if (!environment.packageJsonExists) {
+    recommendation = '- package.json is missing. Vulnerability scan for npm dependencies may be skipped.';
+  } else if (environment.trivyAvailable) {
+    recommendation = '- Ready. Trivy is available, so vulnerability scanning can run immediately.';
+  } else if (environment.npmAvailable && environment.packageLockExists) {
+    recommendation = '- Ready. npm audit can run with the existing package-lock.json.';
+  } else if (environment.npmAvailable && !environment.packageLockExists) {
+    recommendation = '- Ready with auto-prepare. The tool will try to generate package-lock.json automatically before npm audit.';
+  } else {
+    recommendation = '- npm command not found. Install Node.js/npm or install Trivy for vulnerability scanning.';
+  }
+
   return [
     `# Project Check`,
     '',
@@ -183,9 +196,7 @@ function buildProjectCheckMarkdown(environment, workspacePath) {
     `- trivy command: ${environment.trivyAvailable ? 'Available' : 'Not found'}`,
     '',
     `## Recommendation`,
-    environment.packageJsonExists
-      ? '- You can run SBOM generation and vulnerability scanning now.'
-      : '- package.json is missing. Vulnerability scan for npm dependencies may be skipped.',
+    recommendation,
   ].join('\n');
 }
 
