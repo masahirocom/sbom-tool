@@ -134,19 +134,29 @@ function buildVulnerabilityHtmlReport(scanResult, workspacePath) {
   }
 
   function buildReferenceCell(item) {
-    const links = [];
-    const cveId = String(item.cveId || '').trim().toUpperCase();
-    if (/^CVE-\d{4}-\d+$/i.test(cveId)) {
-      const nvdUrl = `https://nvd.nist.gov/vuln/detail/${encodeURIComponent(cveId)}`;
-      const cveLink = toSafeLink(nvdUrl, cveId);
-      if (cveLink) links.push(cveLink);
+    const cveIds = new Set();
+    const candidates = [item.cveId, item.title, item.description, item.reference, item.url];
+
+    for (const candidate of candidates) {
+      const text = String(candidate || '');
+      const matches = text.match(/CVE-\d{4}-\d+/gi) || [];
+      for (const match of matches) {
+        cveIds.add(match.toUpperCase());
+      }
     }
 
-    const referenceUrl = item.url || item.reference;
-    const refLink = toSafeLink(referenceUrl, 'Reference');
-    if (refLink) links.push(refLink);
+    if (cveIds.size === 0) {
+      return '-';
+    }
 
-    return links.length > 0 ? links.join('<br/>') : '-';
+    return Array.from(cveIds)
+      .sort()
+      .map((cveId) => {
+        const nvdUrl = `https://nvd.nist.gov/vuln/detail/${encodeURIComponent(cveId)}`;
+        return toSafeLink(nvdUrl, cveId);
+      })
+      .filter(Boolean)
+      .join('<br/>');
   }
 
   return `<!DOCTYPE html>
@@ -206,7 +216,7 @@ function buildVulnerabilityHtmlReport(scanResult, workspacePath) {
         <th>Title</th>
         <th>Current</th>
         <th>Fix</th>
-        <th>CVE / Reference</th>
+        <th>CVE ID</th>
       </tr>
     </thead>
     <tbody>
