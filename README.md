@@ -1,6 +1,17 @@
 # SBOM Tool
 
+- English: [README.md](README.md)
+- 日本語: [README.ja.md](README.ja.md)
+
 SBOM Tool generates SBOM files and runs vulnerability checks for the currently opened workspace.
+
+## Download VSIX
+
+Use this file for installation:
+
+- [releases/sbom-tool-latest.vsix](releases/sbom-tool-latest.vsix)
+
+You can also use a version-pinned file in [releases](releases).
 
 ## Dashboard (Activity Bar)
 
@@ -64,7 +75,7 @@ By default, output files are generated under `.sbom-tool/` in your workspace.
 ```bash
 cd vscode-extension/csap-sbom-security
 npm install
-npx @vscode/vsce package --allow-missing-repository --skip-license
+npm run package:release
 ```
 
 ## License

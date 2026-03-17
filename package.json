@@ -39,6 +39,7 @@
     "package.nls.json",
     "package.nls.ja.json",
     "README.md",
+    "README.ja.md",
     "LICENSE*",
     "package.json"
   ],
@@ -156,7 +157,8 @@
     }
   },
   "scripts": {
-    "package": "npx @vscode/vsce package"
+    "package": "npx @vscode/vsce package",
+    "package:release": "mkdir -p releases && VERSION=$(node -p \"require('./package.json').version\") && npx @vscode/vsce package -o releases/sbom-tool-$VERSION.vsix && cp releases/sbom-tool-$VERSION.vsix releases/sbom-tool-latest.vsix"
   },
   "devDependencies": {
     "@vscode/vsce": "^2.26.1"

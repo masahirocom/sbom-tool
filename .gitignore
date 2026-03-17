@@ -1,4 +1,5 @@
 node_modules/
 *.vsix
+!releases/*.vsix
 .DS_Store
 .sbom-tool/
