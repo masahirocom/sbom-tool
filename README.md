@@ -42,4 +42,4 @@ npx @vscode/vsce package --allow-missing-repository --skip-license
 
 ## License
 
-MIT
+Apache License 2.0
