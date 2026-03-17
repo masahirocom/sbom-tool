@@ -2,7 +2,7 @@
   "name": "sbom-tool",
   "displayName": "%ext.displayName%",
   "description": "%ext.description%",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "publisher": "masahirocom",
   "private": false,
   "license": "Apache-2.0",

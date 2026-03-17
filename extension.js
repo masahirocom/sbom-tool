@@ -135,6 +135,7 @@ function buildVulnerabilityHtmlReport(scanResult, workspacePath) {
 
   function buildReferenceCell(item) {
     const cveIds = new Set();
+    const advisoryIds = new Set();
     const candidates = [item.cveId, item.title, item.description, item.reference, item.url];
 
     for (const candidate of candidates) {
@@ -143,20 +144,45 @@ function buildVulnerabilityHtmlReport(scanResult, workspacePath) {
       for (const match of matches) {
         cveIds.add(match.toUpperCase());
       }
+
+      const ghsaMatches = text.match(/GHSA-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}/gi) || [];
+      for (const match of ghsaMatches) {
+        advisoryIds.add(match.toUpperCase());
+      }
     }
 
-    if (cveIds.size === 0) {
-      return '-';
+    const links = [];
+
+    if (cveIds.size > 0) {
+      links.push(
+        ...Array.from(cveIds)
+          .sort()
+          .map((cveId) => {
+            const nvdUrl = `https://nvd.nist.gov/vuln/detail/${encodeURIComponent(cveId)}`;
+            return toSafeLink(nvdUrl, cveId);
+          })
+          .filter(Boolean)
+      );
     }
 
-    return Array.from(cveIds)
-      .sort()
-      .map((cveId) => {
-        const nvdUrl = `https://nvd.nist.gov/vuln/detail/${encodeURIComponent(cveId)}`;
-        return toSafeLink(nvdUrl, cveId);
-      })
-      .filter(Boolean)
-      .join('<br/>');
+    if (advisoryIds.size > 0) {
+      links.push(
+        ...Array.from(advisoryIds)
+          .sort()
+          .map((advisoryId) => {
+            const ghsaUrl = `https://github.com/advisories/${encodeURIComponent(advisoryId)}`;
+            return toSafeLink(ghsaUrl, advisoryId);
+          })
+          .filter(Boolean)
+      );
+    }
+
+    const fallbackReference = toSafeLink(item.url || item.reference, 'Advisory');
+    if (links.length === 0 && fallbackReference) {
+      links.push(fallbackReference);
+    }
+
+    return links.length > 0 ? links.join('<br/>') : '-';
   }
 
   return `<!DOCTYPE html>
@@ -216,7 +242,7 @@ function buildVulnerabilityHtmlReport(scanResult, workspacePath) {
         <th>Title</th>
         <th>Current</th>
         <th>Fix</th>
-        <th>CVE ID</th>
+        <th>CVE / Advisory</th>
       </tr>
     </thead>
     <tbody>
