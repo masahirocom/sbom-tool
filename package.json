@@ -29,6 +29,7 @@
   "categories": [
     "Other"
   ],
+  "icon": "media/icon.png",
   "main": "./extension.js",
   "files": [
     "extension.js",
