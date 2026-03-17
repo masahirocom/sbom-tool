@@ -1,0 +1,77 @@
+{
+  "name": "csap-sbom-security",
+  "displayName": "CSAP SBOM Security",
+  "description": "Generate SBOM and run vulnerability checks for the current workspace",
+  "version": "0.1.0",
+  "publisher": "internal",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./extension.js",
+  "files": [
+    "extension.js",
+    "lib/**",
+    "README.md",
+    "package.json"
+  ],
+  "activationEvents": [
+    "onCommand:csapSbom.generateSbom",
+    "onCommand:csapSbom.scanVulnerabilities",
+    "onCommand:csapSbom.generateAndScan"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "csapSbom.generateSbom",
+        "title": "CSAP SBOM: Generate SBOM"
+      },
+      {
+        "command": "csapSbom.scanVulnerabilities",
+        "title": "CSAP SBOM: Scan Vulnerabilities"
+      },
+      {
+        "command": "csapSbom.generateAndScan",
+        "title": "CSAP SBOM: Generate SBOM + Scan Vulnerabilities"
+      }
+    ],
+    "configuration": {
+      "title": "CSAP SBOM Security",
+      "properties": {
+        "csapSbom.outputDirectory": {
+          "type": "string",
+          "default": ".csap-sbom",
+          "description": "Output directory (relative to workspace root) for generated SBOM and vulnerability reports."
+        },
+        "csapSbom.defaultSbomFormat": {
+          "type": "string",
+          "enum": [
+            "cyclonedx-json",
+            "spdx"
+          ],
+          "default": "cyclonedx-json",
+          "description": "Default SBOM export format."
+        },
+        "csapSbom.vulnerabilityScanner": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "trivy",
+            "npm-audit"
+          ],
+          "default": "auto",
+          "description": "Scanner selection for vulnerability checks. auto tries Trivy first, then npm audit."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "package": "npx @vscode/vsce package"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^2.26.1"
+  }
+}
