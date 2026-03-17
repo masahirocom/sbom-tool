@@ -33,6 +33,7 @@
   "files": [
     "extension.js",
     "lib/**",
+    "media/**",
     "l10n/**",
     "package.nls.json",
     "package.nls.ja.json",
@@ -40,12 +41,26 @@
     "LICENSE*",
     "package.json"
   ],
-  "activationEvents": [
-    "onCommand:sbomTool.generateSbom",
-    "onCommand:sbomTool.scanVulnerabilities",
-    "onCommand:sbomTool.generateAndScan"
-  ],
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sbomTool",
+          "title": "%viewContainer.title%",
+          "icon": "media/sbom.svg"
+        }
+      ]
+    },
+    "views": {
+      "sbomTool": [
+        {
+          "id": "sbomTool.dashboard",
+          "name": "%view.dashboard.name%",
+          "type": "webview",
+          "icon": "media/sbom.svg"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "sbomTool.generateSbom",
@@ -58,8 +73,38 @@
       {
         "command": "sbomTool.generateAndScan",
         "title": "%command.generateAndScan%"
+      },
+      {
+        "command": "sbomTool.checkCurrentProject",
+        "title": "%command.checkCurrentProject%"
+      },
+      {
+        "command": "sbomTool.setScanner",
+        "title": "%command.setScanner%"
+      },
+      {
+        "command": "sbomTool.setUiLanguage",
+        "title": "%command.setUiLanguage%"
+      },
+      {
+        "command": "sbomTool.setResultOpenMode",
+        "title": "%command.setResultOpenMode%"
       }
     ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "sbomTool.generateAndScan",
+          "when": "view == sbomTool.dashboard",
+          "group": "navigation"
+        },
+        {
+          "command": "sbomTool.checkCurrentProject",
+          "when": "view == sbomTool.dashboard",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "%config.title%",
       "properties": {
@@ -86,6 +131,25 @@
           ],
           "default": "auto",
           "description": "%config.vulnerabilityScanner.description%"
+        },
+        "sbomTool.uiLanguage": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "en",
+            "ja"
+          ],
+          "default": "auto",
+          "description": "%config.uiLanguage.description%"
+        },
+        "sbomTool.resultOpenMode": {
+          "type": "string",
+          "enum": [
+            "vscode",
+            "external"
+          ],
+          "default": "vscode",
+          "description": "%config.resultOpenMode.description%"
         }
       }
     }

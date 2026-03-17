@@ -2,11 +2,26 @@
 
 SBOM Tool generates SBOM files and runs vulnerability checks for the currently opened workspace.
 
+## Dashboard (Activity Bar)
+
+After installation, an SBOM Tool icon appears in the Activity Bar.
+From the Dashboard you can:
+
+- Check the currently opened project
+- Switch vulnerability scanner (`auto` / `trivy` / `npm-audit`)
+- Switch UI language (`auto` / `en` / `ja`)
+- Switch result open mode (`vscode` / `external`)
+- Run SBOM generation and vulnerability scan actions
+
 ## Commands
 
 - `SBOM Tool: Generate SBOM`
 - `SBOM Tool: Scan Vulnerabilities`
 - `SBOM Tool: Generate SBOM + Scan Vulnerabilities`
+- `SBOM Tool: Check Current Project`
+- `SBOM Tool: Select Scanner`
+- `SBOM Tool: Select UI Language`
+- `SBOM Tool: Select Result Open Mode`
 
 ## Output
 
@@ -26,6 +41,13 @@ By default, output files are generated under `.sbom-tool/` in your workspace.
   - `auto`: Tries Trivy first, falls back to npm audit
   - `trivy`: Uses Trivy only
   - `npm-audit`: Uses npm audit only
+- `sbomTool.uiLanguage` (default: `auto`)
+  - `auto`: Follows VS Code display language
+  - `en`: English
+  - `ja`: Japanese
+- `sbomTool.resultOpenMode` (default: `vscode`)
+  - `vscode`: Opens reports inside VS Code
+  - `external`: Opens reports in external browser
 
 ## Prerequisites
 
