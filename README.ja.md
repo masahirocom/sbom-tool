@@ -14,6 +14,11 @@ SBOMツールは、現在開いているワークスペースに対してSBOM生
 バージョン固定で使いたい場合は [releases](releases) 配下のファイルを選択してください。
 現在の例: `releases/sbom-tool-0.1.1.vsix`
 
+## Marketplaceからインストール（推奨）
+
+VS Code Marketplaceに公開後は、拡張ビューからSBOM Toolをインストールできます。
+Marketplace経由でインストールした場合は自動アップデートに対応します。
+
 ## ダッシュボード（アクティビティバー）
 
 インストール後、アクティビティバーにSBOMツールのアイコンが表示されます。
@@ -78,6 +83,16 @@ cd vscode-extension/csap-sbom-security
 npm install
 npm run release:patch
 ```
+
+## 公開（Marketplace）
+
+```bash
+cd vscode-extension/csap-sbom-security
+npm install
+npm run publish:patch
+```
+
+Publisher設定やPATの詳細手順は [PUBLISHING.md](PUBLISHING.md) を参照してください。
 
 ## ライセンス
 

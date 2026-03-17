@@ -14,6 +14,11 @@ Use this file for installation:
 You can also use a version-pinned file in [releases](releases).
 Current version example: `releases/sbom-tool-0.1.1.vsix`
 
+## Install from Marketplace (recommended)
+
+Once published to VS Code Marketplace, install SBOM Tool from the Extensions view.
+Marketplace installations support automatic updates.
+
 ## Dashboard (Activity Bar)
 
 After installation, an SBOM Tool icon appears in the Activity Bar.
@@ -78,6 +83,16 @@ cd vscode-extension/csap-sbom-security
 npm install
 npm run release:patch
 ```
+
+## Publish (Marketplace)
+
+```bash
+cd vscode-extension/csap-sbom-security
+npm install
+npm run publish:patch
+```
+
+See [PUBLISHING.md](PUBLISHING.md) for complete setup (publisher and PAT).
 
 ## License
 
