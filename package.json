@@ -2,7 +2,7 @@
   "name": "sbom-tool",
   "displayName": "%ext.displayName%",
   "description": "%ext.description%",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "masahirocom",
   "private": false,
   "license": "Apache-2.0",
@@ -158,7 +158,8 @@
   },
   "scripts": {
     "package": "npx @vscode/vsce package",
-    "package:release": "mkdir -p releases && VERSION=$(node -p \"require('./package.json').version\") && npx @vscode/vsce package -o releases/sbom-tool-$VERSION.vsix && cp releases/sbom-tool-$VERSION.vsix releases/sbom-tool-latest.vsix"
+    "package:release": "mkdir -p releases && VERSION=$(node -p \"require('./package.json').version\") && npx @vscode/vsce package -o releases/sbom-tool-$VERSION.vsix && cp releases/sbom-tool-$VERSION.vsix releases/sbom-tool-latest.vsix",
+    "release:patch": "npm version patch --no-git-tag-version && npm run package:release"
   },
   "devDependencies": {
     "@vscode/vsce": "^2.26.1"

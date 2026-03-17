@@ -12,6 +12,7 @@ Use this file for installation:
 - [releases/sbom-tool-latest.vsix](releases/sbom-tool-latest.vsix)
 
 You can also use a version-pinned file in [releases](releases).
+Current version example: `releases/sbom-tool-0.1.1.vsix`
 
 ## Dashboard (Activity Bar)
 
@@ -75,7 +76,7 @@ By default, output files are generated under `.sbom-tool/` in your workspace.
 ```bash
 cd vscode-extension/csap-sbom-security
 npm install
-npm run package:release
+npm run release:patch
 ```
 
 ## License
