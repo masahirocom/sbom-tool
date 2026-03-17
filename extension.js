@@ -9,6 +9,13 @@ const {
   formatVulnerabilitySummary,
 } = require('./lib/scanner');
 
+function t(vscodeApi, message, ...args) {
+  if (vscodeApi.l10n && typeof vscodeApi.l10n.t === 'function') {
+    return vscodeApi.l10n.t(message, ...args);
+  }
+  return message.replace(/\{(\d+)\}/g, (_, index) => String(args[Number(index)] ?? ''));
+}
+
 function activate(context) {
   const generateSbomCommand = vscode.commands.registerCommand('sbomTool.generateSbom', async () => {
     await runGenerateSbom(vscode);
@@ -30,7 +37,7 @@ function deactivate() {}
 async function pickTargetFolder(vscodeApi) {
   const folders = vscodeApi.workspace.workspaceFolders;
   if (!folders || folders.length === 0) {
-    vscodeApi.window.showErrorMessage('ワークスペースフォルダを開いてから実行してください。');
+    vscodeApi.window.showErrorMessage(t(vscodeApi, 'Open a workspace folder before running this command.'));
     return undefined;
   }
 
@@ -44,7 +51,7 @@ async function pickTargetFolder(vscodeApi) {
       description: folder.uri.fsPath,
       folder,
     })),
-    { title: 'SBOM対象ワークスペースを選択' }
+    { title: t(vscodeApi, 'Select target workspace for SBOM analysis') }
   );
 
   return picked ? picked.folder : undefined;
@@ -73,7 +80,7 @@ async function runGenerateSbom(vscodeApi) {
   await vscodeApi.window.withProgress(
     {
       location: vscodeApi.ProgressLocation.Notification,
-      title: 'SBOM生成中',
+      title: t(vscodeApi, 'Generating SBOM'),
       cancellable: false,
     },
     async () => {
@@ -96,8 +103,8 @@ async function runGenerateSbom(vscodeApi) {
         fs.writeFileSync(exportPath, exportSBOMAsCycloneDxJson(sbom), 'utf-8');
       }
 
-      const message = `SBOMを生成しました: ${path.basename(exportPath)}`;
-      const openAction = '出力フォルダを開く';
+      const message = t(vscodeApi, 'SBOM generated: {0}', path.basename(exportPath));
+      const openAction = t(vscodeApi, 'Open output folder');
       const selected = await vscodeApi.window.showInformationMessage(message, openAction);
       if (selected === openAction) {
         await vscodeApi.commands.executeCommand('revealFileInOS', vscodeApi.Uri.file(outputPath));
@@ -113,7 +120,7 @@ async function runVulnerabilityScan(vscodeApi) {
   await vscodeApi.window.withProgress(
     {
       location: vscodeApi.ProgressLocation.Notification,
-      title: '脆弱性スキャン実行中',
+      title: t(vscodeApi, 'Running vulnerability scan'),
       cancellable: false,
     },
     async () => {
@@ -126,7 +133,7 @@ async function runVulnerabilityScan(vscodeApi) {
       writeJsonFile(reportPath, scanResult);
 
       const summary = formatVulnerabilitySummary(scanResult);
-      const openAction = 'レポートを開く';
+      const openAction = t(vscodeApi, 'Open report');
       const selected = await vscodeApi.window.showInformationMessage(summary, openAction);
       if (selected === openAction) {
         const document = await vscodeApi.workspace.openTextDocument(vscodeApi.Uri.file(reportPath));
@@ -143,7 +150,7 @@ async function runGenerateAndScan(vscodeApi) {
   await vscodeApi.window.withProgress(
     {
       location: vscodeApi.ProgressLocation.Notification,
-      title: 'SBOM生成 + 脆弱性スキャン実行中',
+      title: t(vscodeApi, 'Running SBOM generation + vulnerability scan'),
       cancellable: false,
     },
     async (progress) => {
@@ -153,7 +160,7 @@ async function runGenerateAndScan(vscodeApi) {
       const scannerPreference = config.get('vulnerabilityScanner', 'auto');
       const defaultFormat = config.get('defaultSbomFormat', 'cyclonedx-json');
 
-      progress.report({ message: 'SBOMを生成中...' });
+      progress.report({ message: t(vscodeApi, 'Generating SBOM...') });
       const sbom = generateSBOM(workspacePath);
       const suffix = timestampSuffix();
       const rawSbomPath = path.join(outputPath, `sbom-raw-${suffix}.json`);
@@ -165,14 +172,14 @@ async function runGenerateAndScan(vscodeApi) {
         fs.writeFileSync(path.join(outputPath, `sbom-cyclonedx-${suffix}.json`), exportSBOMAsCycloneDxJson(sbom), 'utf-8');
       }
 
-      progress.report({ message: '脆弱性スキャンを実行中...' });
+      progress.report({ message: t(vscodeApi, 'Running vulnerability scan...') });
       const scanResult = await scanVulnerabilities(workspacePath, scannerPreference);
       const reportPath = path.join(outputPath, `vulnerability-report-${suffix}.json`);
       writeJsonFile(reportPath, scanResult);
 
       const summary = formatVulnerabilitySummary(scanResult);
-      const openAction = '出力フォルダを開く';
-      const selected = await vscodeApi.window.showInformationMessage(`完了: ${summary}`, openAction);
+      const openAction = t(vscodeApi, 'Open output folder');
+      const selected = await vscodeApi.window.showInformationMessage(t(vscodeApi, 'Done: {0}', summary), openAction);
       if (selected === openAction) {
         await vscodeApi.commands.executeCommand('revealFileInOS', vscodeApi.Uri.file(outputPath));
       }

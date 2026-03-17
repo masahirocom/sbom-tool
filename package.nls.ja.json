@@ -1,0 +1,11 @@
+{
+  "ext.displayName": "SBOMツール",
+  "ext.description": "現在のワークスペースのSBOM生成と脆弱性チェックを実行します",
+  "command.generateSbom": "SBOMツール: SBOMを生成",
+  "command.scanVulnerabilities": "SBOMツール: 脆弱性をスキャン",
+  "command.generateAndScan": "SBOMツール: SBOM生成 + 脆弱性スキャン",
+  "config.title": "SBOMツール",
+  "config.outputDirectory.description": "生成されたSBOMと脆弱性レポートの出力先ディレクトリ（ワークスペース相対）です。",
+  "config.defaultSbomFormat.description": "デフォルトのSBOM出力フォーマットです。",
+  "config.vulnerabilityScanner.description": "脆弱性スキャンで使うスキャナを選択します。auto は Trivy を優先し、失敗時に npm audit を使います。"
+}

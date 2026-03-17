@@ -1,6 +1,6 @@
 # SBOM Tool
 
-この拡張は、現在開いているワークスペースに対して **SBOM生成** と **脆弱性スキャン** をローカル実行します。
+SBOM Tool generates SBOM files and runs vulnerability checks for the currently opened workspace.
 
 ## Commands
 
@@ -10,11 +10,11 @@
 
 ## Output
 
-デフォルトではワークスペース直下の `.sbom-tool/` に出力されます。
+By default, output files are generated under `.sbom-tool/` in your workspace.
 
-- `sbom-raw-*.json` : 解析内部SBOM
-- `sbom-cyclonedx-*.json` または `sbom-spdx-*.spdx` : エクスポートSBOM
-- `vulnerability-report-*.json` : 脆弱性スキャン結果
+- `sbom-raw-*.json`: Internal parsed SBOM data
+- `sbom-cyclonedx-*.json` or `sbom-spdx-*.spdx`: Exported SBOM
+- `vulnerability-report-*.json`: Vulnerability scan result
 
 ## Settings
 
@@ -23,14 +23,19 @@
   - `cyclonedx-json`
   - `spdx`
 - `sbomTool.vulnerabilityScanner` (default: `auto`)
-  - `auto`: Trivy優先、失敗時 npm audit
-  - `trivy`: Trivyのみ
-  - `npm-audit`: npm auditのみ
+  - `auto`: Tries Trivy first, falls back to npm audit
+  - `trivy`: Uses Trivy only
+  - `npm-audit`: Uses npm audit only
 
 ## Prerequisites
 
 - Node.js / npm
-- `trivy` を使う場合は Trivy インストール済み
+- Trivy installed (when using `trivy` mode)
+
+## Language Support
+
+- Default language: English
+- Supported language: Japanese (when VS Code display language is `ja`)
 
 ## Package
 

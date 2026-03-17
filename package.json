@@ -1,7 +1,7 @@
 {
   "name": "sbom-tool",
-  "displayName": "SBOM Tool",
-  "description": "Generate SBOM and run vulnerability checks for the current workspace",
+  "displayName": "%ext.displayName%",
+  "description": "%ext.description%",
   "version": "0.1.0",
   "publisher": "masahirocom",
   "private": false,
@@ -14,6 +14,7 @@
     "url": "https://github.com/masahirocom/sbom-tool/issues"
   },
   "homepage": "https://github.com/masahirocom/sbom-tool#readme",
+  "l10n": "./l10n",
   "keywords": [
     "sbom",
     "cyclonedx",
@@ -32,7 +33,11 @@
   "files": [
     "extension.js",
     "lib/**",
+    "l10n/**",
+    "package.nls.json",
+    "package.nls.ja.json",
     "README.md",
+    "LICENSE*",
     "package.json"
   ],
   "activationEvents": [
@@ -44,24 +49,24 @@
     "commands": [
       {
         "command": "sbomTool.generateSbom",
-        "title": "SBOM Tool: Generate SBOM"
+        "title": "%command.generateSbom%"
       },
       {
         "command": "sbomTool.scanVulnerabilities",
-        "title": "SBOM Tool: Scan Vulnerabilities"
+        "title": "%command.scanVulnerabilities%"
       },
       {
         "command": "sbomTool.generateAndScan",
-        "title": "SBOM Tool: Generate SBOM + Scan Vulnerabilities"
+        "title": "%command.generateAndScan%"
       }
     ],
     "configuration": {
-      "title": "SBOM Tool",
+      "title": "%config.title%",
       "properties": {
         "sbomTool.outputDirectory": {
           "type": "string",
           "default": ".sbom-tool",
-          "description": "Output directory (relative to workspace root) for generated SBOM and vulnerability reports."
+          "description": "%config.outputDirectory.description%"
         },
         "sbomTool.defaultSbomFormat": {
           "type": "string",
@@ -70,7 +75,7 @@
             "spdx"
           ],
           "default": "cyclonedx-json",
-          "description": "Default SBOM export format."
+          "description": "%config.defaultSbomFormat.description%"
         },
         "sbomTool.vulnerabilityScanner": {
           "type": "string",
@@ -80,7 +85,7 @@
             "npm-audit"
           ],
           "default": "auto",
-          "description": "Scanner selection for vulnerability checks. auto tries Trivy first, then npm audit."
+          "description": "%config.vulnerabilityScanner.description%"
         }
       }
     }

@@ -1,0 +1,13 @@
+{
+  "Open a workspace folder before running this command.": "このコマンドを実行する前にワークスペースフォルダを開いてください。",
+  "Select target workspace for SBOM analysis": "SBOM解析の対象ワークスペースを選択",
+  "Generating SBOM": "SBOMを生成中",
+  "SBOM generated: {0}": "SBOMを生成しました: {0}",
+  "Open output folder": "出力フォルダを開く",
+  "Running vulnerability scan": "脆弱性スキャン実行中",
+  "Open report": "レポートを開く",
+  "Running SBOM generation + vulnerability scan": "SBOM生成 + 脆弱性スキャンを実行中",
+  "Generating SBOM...": "SBOMを生成中...",
+  "Running vulnerability scan...": "脆弱性スキャンを実行中...",
+  "Done: {0}": "完了: {0}"
+}
