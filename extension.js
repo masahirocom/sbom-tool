@@ -115,33 +115,89 @@ function timestampSuffix() {
 
 function buildVulnerabilityHtmlReport(scanResult, workspacePath) {
   const title = `Vulnerability Report - ${path.basename(workspacePath)}`;
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  function toSafeLink(url, label) {
+    const value = String(url || '').trim();
+    if (!/^https?:\/\//i.test(value)) {
+      return '';
+    }
+    return `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label || value)}</a>`;
+  }
+
+  function buildReferenceCell(item) {
+    const links = [];
+    const cveId = String(item.cveId || '').trim().toUpperCase();
+    if (/^CVE-\d{4}-\d+$/i.test(cveId)) {
+      const nvdUrl = `https://nvd.nist.gov/vuln/detail/${encodeURIComponent(cveId)}`;
+      const cveLink = toSafeLink(nvdUrl, cveId);
+      if (cveLink) links.push(cveLink);
+    }
+
+    const referenceUrl = item.url || item.reference;
+    const refLink = toSafeLink(referenceUrl, 'Reference');
+    if (refLink) links.push(refLink);
+
+    return links.length > 0 ? links.join('<br/>') : '-';
+  }
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${title}</title>
+  <meta name="color-scheme" content="light dark" />
+  <title>${escapeHtml(title)}</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 24px; color: #1f2328; }
+    :root {
+      --bg: #ffffff;
+      --fg: #1f2328;
+      --muted: #57606a;
+      --border: #d0d7de;
+      --panel: #f6f8fa;
+      --link: #0969da;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117;
+        --fg: #e6edf3;
+        --muted: #9da7b3;
+        --border: #30363d;
+        --panel: #161b22;
+        --link: #58a6ff;
+      }
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 24px; color: var(--fg); background: var(--bg); }
     h1 { margin-bottom: 8px; }
-    .meta { color: #57606a; margin-bottom: 16px; }
-    .pill { display:inline-block; margin-right:8px; padding: 4px 10px; border-radius: 999px; background: #f6f8fa; border:1px solid #d0d7de; font-size:12px; }
+    .meta { color: var(--muted); margin-bottom: 16px; }
+    .pill { display:inline-block; margin-right:8px; margin-bottom:8px; padding: 4px 10px; border-radius: 999px; background: var(--panel); border:1px solid var(--border); font-size:12px; }
     table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-    th, td { border: 1px solid #d0d7de; padding: 8px; font-size: 12px; text-align: left; vertical-align: top; }
-    th { background: #f6f8fa; }
+    th, td { border: 1px solid var(--border); padding: 8px; font-size: 12px; text-align: left; vertical-align: top; }
+    th { background: var(--panel); }
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <h1>${title}</h1>
-  <div class="meta">Generated at: ${scanResult.timestamp}</div>
-  <div class="pill">Source: ${scanResult.source}</div>
-  <div class="pill">Total: ${scanResult.totalVulnerabilities}</div>
-  <div class="pill">Critical: ${scanResult.critical}</div>
-  <div class="pill">High: ${scanResult.high}</div>
-  <div class="pill">Moderate: ${scanResult.moderate}</div>
-  <div class="pill">Low: ${scanResult.low}</div>
-  <div class="pill">Fixable Packages: ${scanResult.fixable}</div>
-  <p>${scanResult.summary}</p>
+  <h1>${escapeHtml(title)}</h1>
+  <div class="meta">Generated at: ${escapeHtml(scanResult.timestamp)}</div>
+  <div class="pill">Source: ${escapeHtml(scanResult.source)}</div>
+  <div class="pill">Total: ${escapeHtml(scanResult.totalVulnerabilities)}</div>
+  <div class="pill">Critical: ${escapeHtml(scanResult.critical)}</div>
+  <div class="pill">High: ${escapeHtml(scanResult.high)}</div>
+  <div class="pill">Moderate: ${escapeHtml(scanResult.moderate)}</div>
+  <div class="pill">Low: ${escapeHtml(scanResult.low)}</div>
+  <div class="pill">Fixable Packages: ${escapeHtml(scanResult.fixable)}</div>
+  <p>${escapeHtml(scanResult.summary)}</p>
   <table>
     <thead>
       <tr>
@@ -150,6 +206,7 @@ function buildVulnerabilityHtmlReport(scanResult, workspacePath) {
         <th>Title</th>
         <th>Current</th>
         <th>Fix</th>
+        <th>CVE / Reference</th>
       </tr>
     </thead>
     <tbody>
@@ -158,11 +215,12 @@ function buildVulnerabilityHtmlReport(scanResult, workspacePath) {
         .map(
           (item) => `
       <tr>
-        <td>${String(item.packageName || '')}</td>
-        <td>${String(item.severity || '')}</td>
-        <td>${String(item.title || '')}</td>
-        <td>${String(item.currentVersion || item.affectedRange || '')}</td>
-        <td>${String(item.proposedFix || '')}</td>
+        <td>${escapeHtml(item.packageName || '')}</td>
+        <td>${escapeHtml(item.severity || '')}</td>
+        <td>${escapeHtml(item.title || '')}</td>
+        <td>${escapeHtml(item.currentVersion || item.affectedRange || '')}</td>
+        <td>${escapeHtml(item.proposedFix || '')}</td>
+        <td>${buildReferenceCell(item)}</td>
       </tr>`
         )
         .join('')}
