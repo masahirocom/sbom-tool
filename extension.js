@@ -557,7 +557,10 @@ function buildProjectCheckMarkdown(environment, workspacePath) {
 async function installSbomTools(vscodeApi) {
   const setupItems = [];
   const brewAvailable = isCommandAvailable('brew');
+  const wingetAvailable = isCommandAvailable('winget');
+  const scoopAvailable = isCommandAvailable('scoop');
 
+  // macOS/Linux with Homebrew
   if ((process.platform === 'darwin' || process.platform === 'linux') && brewAvailable) {
     setupItems.push({
       label: t(vscodeApi, 'installWithHomebrew'),
@@ -566,6 +569,7 @@ async function installSbomTools(vscodeApi) {
     });
   }
 
+  // macOS/Linux without Homebrew
   if ((process.platform === 'darwin' || process.platform === 'linux') && !brewAvailable) {
     setupItems.push({
       label: t(vscodeApi, 'openHomebrewSite'),
@@ -574,7 +578,31 @@ async function installSbomTools(vscodeApi) {
     });
   }
 
+  // Windows with WinGet
+  if (process.platform === 'win32' && wingetAvailable) {
+    setupItems.push({
+      label: t(vscodeApi, 'installWithWinget'),
+      description: t(vscodeApi, 'installWithWingetDescription'),
+      action: 'winget',
+    });
+  }
+
+  // Windows with Scoop
+  if (process.platform === 'win32' && scoopAvailable) {
+    setupItems.push({
+      label: t(vscodeApi, 'installWithScoop'),
+      description: t(vscodeApi, 'installWithScoopDescription'),
+      action: 'scoop',
+    });
+  }
+
+  // GitHub Releases (all platforms)
   setupItems.push(
+    {
+      label: t(vscodeApi, 'downloadFromGithubReleases'),
+      description: t(vscodeApi, 'downloadFromGithubReleasesDescription'),
+      action: 'releases',
+    },
     {
       label: t(vscodeApi, 'openSyftInstallGuide'),
       description: 'https://oss.anchore.com/docs/installation/syft/',
@@ -605,6 +633,27 @@ async function installSbomTools(vscodeApi) {
 
   if (selected.action === 'homebrew') {
     await vscodeApi.env.openExternal(vscodeApi.Uri.parse('https://brew.sh/'));
+    return;
+  }
+
+  if (selected.action === 'winget') {
+    const terminal = vscodeApi.window.createTerminal('SBOM Vulnerability Scanner Setup');
+    terminal.show();
+    terminal.sendText('winget install Anchore.syft AquaSecurity.Trivy', true);
+    vscodeApi.window.showInformationMessage('Started WinGet installation for Syft and Trivy in the integrated terminal.');
+    return;
+  }
+
+  if (selected.action === 'scoop') {
+    const terminal = vscodeApi.window.createTerminal('SBOM Vulnerability Scanner Setup');
+    terminal.show();
+    terminal.sendText('scoop install syft trivy', true);
+    vscodeApi.window.showInformationMessage('Started Scoop installation for Syft and Trivy in the integrated terminal.');
+    return;
+  }
+
+  if (selected.action === 'releases') {
+    await vscodeApi.env.openExternal(vscodeApi.Uri.parse('https://github.com/anchore/syft/releases'));
     return;
   }
 

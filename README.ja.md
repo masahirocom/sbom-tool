@@ -44,8 +44,10 @@ Marketplace経由でインストールした場合は自動アップデートに
 - `SBOM Vulnerability Scanner: Syft と Trivy をセットアップ`
 
 このセットアップコマンドは、ユーザーが明示的に実行する前提です。
-macOS または Linux で Homebrew が入っている場合は、選択したときだけ統合ターミナルで `brew install syft trivy` を実行できます。
-どのOSでも、Syft と Trivy の公式インストールガイドを開けます。
+- **macOS/Linux (Homebrew あり)**: ユーザーが選択したときだけ統合ターミナルで `brew install syft trivy` を実行
+- **Windows (WinGet あり)**: ユーザーが選択したときだけ統合ターミナルで `winget install Anchore.syft AquaSecurity.Trivy` を実行
+- **Windows (Scoop あり)**: ユーザーが選択したときだけ統合ターミナルで `scoop install syft trivy` を実行  
+- **全プラットフォーム**: GitHub Releases からバイナリをダウンロードするか、公式ガイドを確認可能
 
 ## 出力
 
