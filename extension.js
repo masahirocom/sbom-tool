@@ -560,8 +560,8 @@ async function installSbomTools(vscodeApi) {
   const wingetAvailable = isCommandAvailable('winget');
   const scoopAvailable = isCommandAvailable('scoop');
 
-  // macOS/Linux with Homebrew
-  if ((process.platform === 'darwin' || process.platform === 'linux') && brewAvailable) {
+  // macOS with Homebrew
+  if (process.platform === 'darwin' && brewAvailable) {
     setupItems.push({
       label: t(vscodeApi, 'installWithHomebrew'),
       description: t(vscodeApi, 'installWithHomebrewDescription'),
@@ -569,8 +569,8 @@ async function installSbomTools(vscodeApi) {
     });
   }
 
-  // macOS/Linux without Homebrew
-  if ((process.platform === 'darwin' || process.platform === 'linux') && !brewAvailable) {
+  // macOS without Homebrew - offer Homebrew setup
+  if (process.platform === 'darwin' && !brewAvailable) {
     setupItems.push({
       label: t(vscodeApi, 'openHomebrewSite'),
       description: t(vscodeApi, 'openHomebrewSiteDescription'),
@@ -596,7 +596,16 @@ async function installSbomTools(vscodeApi) {
     });
   }
 
-  // GitHub Releases (all platforms)
+  // Linux/Unix with install script
+  if ((process.platform === 'linux' || process.platform === 'darwin') && isCommandAvailable('curl')) {
+    setupItems.push({
+      label: t(vscodeApi, 'installWithScript'),
+      description: t(vscodeApi, 'installWithScriptDescription'),
+      action: 'script',
+    });
+  }
+
+  // GitHub Releases/Download (all platforms)
   setupItems.push(
     {
       label: t(vscodeApi, 'downloadFromGithubReleases'),
@@ -649,6 +658,15 @@ async function installSbomTools(vscodeApi) {
     terminal.show();
     terminal.sendText('scoop install syft trivy', true);
     vscodeApi.window.showInformationMessage('Started Scoop installation for Syft and Trivy in the integrated terminal.');
+    return;
+  }
+
+  if (selected.action === 'script') {
+    const terminal = vscodeApi.window.createTerminal('SBOM Vulnerability Scanner Setup');
+    terminal.show();
+    terminal.sendText('curl -sSfL https://get.anchore.io/syft | sudo sh -s -- -b /usr/local/bin', true);
+    terminal.sendText('curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin', true);
+    vscodeApi.window.showInformationMessage('Started installation of Syft and Trivy using official install scripts in the integrated terminal.');
     return;
   }
 
