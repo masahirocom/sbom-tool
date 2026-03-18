@@ -122,7 +122,8 @@ function writeTextFile(filePath, text) {
 
 function isCommandAvailable(command) {
   try {
-    execSync(`which ${command}`, { stdio: 'ignore' });
+    const checkCommand = process.platform === 'win32' ? `where ${command}` : `which ${command}`;
+    execSync(checkCommand, { stdio: 'ignore' });
     return true;
   } catch {
     return false;
@@ -547,7 +548,6 @@ function buildProjectCheckMarkdown(environment, workspacePath) {
     `- syft command: ${environment.syftAvailable ? 'Available' : 'Not found'}`,
     `- npm command: ${environment.npmAvailable ? 'Available' : 'Not found'}`,
     `- trivy command: ${environment.trivyAvailable ? 'Available' : 'Not found'}`,
-    `- homebrew command: ${environment.brewAvailable ? 'Available' : 'Not found'}`,
     '',
     `## Recommendation`,
     recommendation,
@@ -555,45 +555,65 @@ function buildProjectCheckMarkdown(environment, workspacePath) {
 }
 
 async function installSbomTools(vscodeApi) {
-  if (process.platform !== 'darwin') {
-    vscodeApi.window.showWarningMessage(t(vscodeApi, 'installToolsUnsupportedPlatform'));
-    return;
+  const setupItems = [];
+  const brewAvailable = isCommandAvailable('brew');
+
+  if ((process.platform === 'darwin' || process.platform === 'linux') && brewAvailable) {
+    setupItems.push({
+      label: t(vscodeApi, 'installWithHomebrew'),
+      description: t(vscodeApi, 'installWithHomebrewDescription'),
+      action: 'brew',
+    });
   }
 
-  if (!isCommandAvailable('brew')) {
-    const selected = await vscodeApi.window.showWarningMessage(
-      t(vscodeApi, 'installToolsRequiresBrew'),
-      t(vscodeApi, 'openHomebrewSite')
-    );
+  if ((process.platform === 'darwin' || process.platform === 'linux') && !brewAvailable) {
+    setupItems.push({
+      label: t(vscodeApi, 'openHomebrewSite'),
+      description: t(vscodeApi, 'openHomebrewSiteDescription'),
+      action: 'homebrew',
+    });
+  }
 
-    if (selected) {
-      await vscodeApi.env.openExternal(vscodeApi.Uri.parse('https://brew.sh/'));
+  setupItems.push(
+    {
+      label: t(vscodeApi, 'openSyftInstallGuide'),
+      description: 'https://oss.anchore.com/docs/installation/syft/',
+      action: 'syft-docs',
+    },
+    {
+      label: t(vscodeApi, 'openTrivyInstallGuide'),
+      description: 'https://trivy.dev/docs/latest/getting-started/installation/',
+      action: 'trivy-docs',
     }
-    return;
-  }
-
-  const terminal = vscodeApi.window.createTerminal('SBOM Vulnerability Scanner Installer');
-  terminal.show();
-  terminal.sendText('brew install syft trivy', true);
-  vscodeApi.window.showInformationMessage(t(vscodeApi, 'installToolsStarted'));
-}
-
-async function maybeOfferToolInstallation(vscodeApi, environment, sbomResult) {
-  const missingGenerators = !environment.syftAvailable && !environment.trivyAvailable;
-  const fellBackToManifest = sbomResult && sbomResult.generator === 'manifest';
-
-  if (!missingGenerators || !fellBackToManifest || process.platform !== 'darwin') {
-    return;
-  }
-
-  const action = await vscodeApi.window.showWarningMessage(
-    t(vscodeApi, 'installToolsRecommendation'),
-    t(vscodeApi, 'installToolsAction')
   );
 
-  if (action) {
-    await installSbomTools(vscodeApi);
+  const selected = await vscodeApi.window.showQuickPick(setupItems, {
+    title: t(vscodeApi, 'toolSetupTitle'),
+  });
+
+  if (!selected) {
+    return;
   }
+
+  if (selected.action === 'brew') {
+    const terminal = vscodeApi.window.createTerminal('SBOM Vulnerability Scanner Setup');
+    terminal.show();
+    terminal.sendText('brew install syft trivy', true);
+    vscodeApi.window.showInformationMessage(t(vscodeApi, 'installToolsStarted'));
+    return;
+  }
+
+  if (selected.action === 'homebrew') {
+    await vscodeApi.env.openExternal(vscodeApi.Uri.parse('https://brew.sh/'));
+    return;
+  }
+
+  if (selected.action === 'syft-docs') {
+    await vscodeApi.env.openExternal(vscodeApi.Uri.parse('https://oss.anchore.com/docs/installation/syft/'));
+    return;
+  }
+
+  await vscodeApi.env.openExternal(vscodeApi.Uri.parse('https://trivy.dev/docs/latest/getting-started/installation/'));
 }
 
 function getDashboardState(vscodeApi) {
@@ -642,8 +662,6 @@ async function runGenerateSbom(vscodeApi) {
       const config = vscodeApi.workspace.getConfiguration('sbomTool');
       const defaultFormat = config.get('defaultSbomFormat', 'cyclonedx-json');
       const sbomGenerator = config.get('sbomGenerator', 'auto');
-      const environment = await checkProjectEnvironment(targetFolder.uri.fsPath);
-
       const sbomResult = await generateSBOM(targetFolder.uri.fsPath, {
         format: defaultFormat,
         preferredGenerator: sbomGenerator,
@@ -662,7 +680,6 @@ async function runGenerateSbom(vscodeApi) {
 
       await openResultFile(vscodeApi, htmlReportPath, 'SBOM Report');
       vscodeApi.window.showInformationMessage(t(vscodeApi, 'sbomGenerated', path.basename(exportPath)));
-      await maybeOfferToolInstallation(vscodeApi, environment, sbomResult);
       dashboardViewProvider?.render();
     }
   );
@@ -681,8 +698,6 @@ async function runVulnerabilityScan(vscodeApi) {
     async () => {
       const config = vscodeApi.workspace.getConfiguration('sbomTool');
       const scannerPreference = config.get('vulnerabilityScanner', 'auto');
-      const environment = await checkProjectEnvironment(targetFolder.uri.fsPath);
-
       const scanResult = await scanVulnerabilities(targetFolder.uri.fsPath, scannerPreference);
       const outputPath = ensureOutputDirectory(vscodeApi, targetFolder.uri.fsPath);
       const suffix = timestampSuffix();
@@ -694,15 +709,6 @@ async function runVulnerabilityScan(vscodeApi) {
       const summary = formatVulnerabilitySummary(scanResult);
       await openResultFile(vscodeApi, htmlReportPath, 'Vulnerability Report');
       vscodeApi.window.showInformationMessage(summary);
-      if (scannerPreference === 'trivy' && !environment.trivyAvailable && process.platform === 'darwin') {
-        const action = await vscodeApi.window.showWarningMessage(
-          t(vscodeApi, 'installTrivyRecommendation'),
-          t(vscodeApi, 'installToolsAction')
-        );
-        if (action) {
-          await installSbomTools(vscodeApi);
-        }
-      }
       dashboardViewProvider?.render();
     }
   );
@@ -725,8 +731,6 @@ async function runGenerateAndScan(vscodeApi) {
       const scannerPreference = config.get('vulnerabilityScanner', 'auto');
       const defaultFormat = config.get('defaultSbomFormat', 'cyclonedx-json');
       const sbomGenerator = config.get('sbomGenerator', 'auto');
-      const environment = await checkProjectEnvironment(workspacePath);
-
       progress.report({ message: t(vscodeApi, 'Generating SBOM...') });
       const sbomResult = await generateSBOM(workspacePath, {
         format: defaultFormat,
@@ -750,7 +754,6 @@ async function runGenerateAndScan(vscodeApi) {
       const summary = formatVulnerabilitySummary(scanResult);
       await openResultFile(vscodeApi, sbomHtmlReportPath, 'SBOM Report');
       vscodeApi.window.showInformationMessage(t(vscodeApi, 'Done: {0}', summary));
-      await maybeOfferToolInstallation(vscodeApi, environment, sbomResult);
       dashboardViewProvider?.render();
     }
   );
