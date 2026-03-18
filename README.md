@@ -44,8 +44,10 @@ From the Dashboard you can:
 - `SBOM Vulnerability Scanner: Set Up Syft and Trivy`
 
 The setup command is explicit and user-driven.
-On macOS or Linux with Homebrew installed, it can open the integrated terminal and run `brew install syft trivy` only after the user selects that option.
-On any platform, it can open the official Syft and Trivy installation guides.
+- **macOS/Linux with Homebrew**: runs `brew install syft trivy` in the terminal after user selection
+- **Windows with WinGet**: runs `winget install Anchore.syft AquaSecurity.Trivy` in the terminal after user selection
+- **Windows with Scoop**: runs `scoop install syft trivy` in the terminal after user selection
+- **All platforms**: download binaries from GitHub Releases or open official installation guides for alternative methods
 
 ## Output
 
