@@ -2,7 +2,7 @@
   "name": "sbom-vulnerability-scanner",
   "displayName": "%ext.displayName%",
   "description": "%ext.description%",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "publisher": "masahirocom",
   "private": false,
   "license": "Apache-2.0",

@@ -135,7 +135,7 @@ function timestampSuffix() {
 }
 
 function escapeHtml(value) {
-  return String(value || '')
+  return String(value ?? '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
@@ -260,7 +260,9 @@ function buildSbomHtmlReport(sbomResult, workspacePath) {
         </tr>
       </thead>
       <tbody>
-        ${components.slice(0, 500).map((component) => `
+        ${components.length === 0
+          ? `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px;">No components detected. If you expected results, check that Syft or Trivy scanned the correct directory and that lock files are present.</td></tr>`
+          : components.slice(0, 500).map((component) => `
         <tr>
           <td>${escapeHtml(component.name || '')}</td>
           <td>${escapeHtml(component.version || '')}</td>
@@ -298,7 +300,7 @@ function buildVulnerabilityHtmlReport(scanResult, workspacePath) {
   const title = `Vulnerability Report - ${path.basename(workspacePath)}`;
 
   function escapeHtml(value) {
-    return String(value || '')
+    return String(value ?? '')
       .replaceAll('&', '&amp;')
       .replaceAll('<', '&lt;')
       .replaceAll('>', '&gt;')
