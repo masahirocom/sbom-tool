@@ -1,30 +1,31 @@
-# SBOM Tool
+# SBOM Vulnerability Scanner
 
 - English: [README.md](README.md)
 - 日本語: [README.ja.md](README.ja.md)
 
-SBOM Tool generates SBOM files and runs vulnerability checks for the currently opened workspace.
+SBOM Vulnerability Scanner generates SBOM files and runs vulnerability checks for the currently opened workspace.
 
 ## Download VSIX
 
 Use this file for installation:
 
-- [releases/sbom-tool-latest.vsix](releases/sbom-tool-latest.vsix)
+- [releases/sbom-vulnerability-scanner-latest.vsix](releases/sbom-vulnerability-scanner-latest.vsix)
 
 You can also use a version-pinned file in [releases](releases).
-Versioned example: `releases/sbom-tool-<version>.vsix`
+Versioned example: `releases/sbom-vulnerability-scanner-<version>.vsix`
 
 ## Install from Marketplace (recommended)
 
-Once published to VS Code Marketplace, install SBOM Tool from the Extensions view.
+Once published to VS Code Marketplace, install SBOM Vulnerability Scanner from the Extensions view.
 Marketplace installations support automatic updates.
 
 ## Dashboard (Activity Bar)
 
-After installation, an SBOM Tool icon appears in the Activity Bar.
+After installation, an SBOM Vulnerability Scanner icon appears in the Activity Bar.
 From the Dashboard you can:
 
 - Check the currently opened project
+- Switch SBOM generator (`auto` / `syft` / `trivy` / `manifest`)
 - Switch vulnerability scanner (`auto` / `trivy` / `npm-audit`)
 - Switch UI language (`auto` / `en` / `ja`)
 - Switch result open mode (`vscode` / `external`)
@@ -32,20 +33,25 @@ From the Dashboard you can:
 
 ## Commands
 
-- `SBOM Tool: Generate SBOM`
-- `SBOM Tool: Scan Vulnerabilities`
-- `SBOM Tool: Generate SBOM + Scan Vulnerabilities`
-- `SBOM Tool: Check Current Project`
-- `SBOM Tool: Select Scanner`
-- `SBOM Tool: Select UI Language`
-- `SBOM Tool: Select Result Open Mode`
+- `SBOM Vulnerability Scanner: Generate SBOM`
+- `SBOM Vulnerability Scanner: Scan Vulnerabilities`
+- `SBOM Vulnerability Scanner: Generate SBOM + Scan Vulnerabilities`
+- `SBOM Vulnerability Scanner: Check Current Project`
+- `SBOM Vulnerability Scanner: Select Scanner`
+- `SBOM Vulnerability Scanner: Select SBOM Generator`
+- `SBOM Vulnerability Scanner: Select UI Language`
+- `SBOM Vulnerability Scanner: Select Result Open Mode`
+- `SBOM Vulnerability Scanner: Install Syft and Trivy`
+
+On macOS, the install command opens the integrated terminal and runs `brew install syft trivy`.
 
 ## Output
 
 By default, output files are generated under `.sbom-tool/` in your workspace.
 
 - `sbom-raw-*.json`: Internal parsed SBOM data
-- `sbom-cyclonedx-*.json` or `sbom-spdx-*.spdx`: Exported SBOM
+- `sbom-cyclonedx-*.json` or `sbom-spdx-*.*`: Exported SBOM
+- `sbom-report-*.html`: Human-readable SBOM report
 - `vulnerability-report-*.json`: Vulnerability scan result
 
 ## Settings
@@ -54,6 +60,11 @@ By default, output files are generated under `.sbom-tool/` in your workspace.
 - `sbomTool.defaultSbomFormat` (default: `cyclonedx-json`)
   - `cyclonedx-json`
   - `spdx`
+- `sbomTool.sbomGenerator` (default: `auto`)
+  - `auto`: Tries Syft first, then Trivy, then the built-in manifest parser
+  - `syft`: Uses Syft only
+  - `trivy`: Uses Trivy only
+  - `manifest`: Uses the built-in package manifest parser only
 - `sbomTool.vulnerabilityScanner` (default: `auto`)
   - `auto`: Tries Trivy first, falls back to npm audit
   - `trivy`: Uses Trivy only
@@ -68,8 +79,11 @@ By default, output files are generated under `.sbom-tool/` in your workspace.
 
 ## Prerequisites
 
-- Node.js / npm
-- Trivy installed (when using `trivy` mode)
+- Syft installed for the broadest SBOM coverage across languages and package managers
+- Trivy installed when using Trivy-based SBOM generation or vulnerability scanning
+- Node.js / npm when using the built-in manifest fallback or npm audit
+
+For macOS users, the extension can start installing Syft and Trivy automatically through Homebrew.
 
 ## Language Support
 

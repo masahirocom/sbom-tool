@@ -1,4 +1,4 @@
-# Publishing SBOM Tool to VS Code Marketplace
+# Publishing SBOM Vulnerability Scanner to VS Code Marketplace
 
 ## 1) Prerequisites
 
@@ -32,7 +32,7 @@ npm run publish:marketplace
 ## 4) Validate published extension
 
 - Open VS Code Extensions view
-- Search `SBOM Tool`
+- Search `SBOM Vulnerability Scanner`
 - Confirm install works and update channel is enabled
 
 ## 5) Local VSIX release (optional)
@@ -44,5 +44,5 @@ npm run release:patch
 ```
 
 Generated files:
-- `releases/sbom-tool-latest.vsix`
-- `releases/sbom-tool-<version>.vsix`
+- `releases/sbom-vulnerability-scanner-latest.vsix`
+- `releases/sbom-vulnerability-scanner-<version>.vsix`

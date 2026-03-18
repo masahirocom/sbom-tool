@@ -1,13 +1,12 @@
 const vscode = require('vscode');
 const path = require('node:path');
 const fs = require('node:fs');
+const { execSync } = require('node:child_process');
 const { SbomDashboardViewProvider } = require('./lib/dashboardView');
 const { openResultFile } = require('./lib/reportViewer');
 const { t, getUiLanguage } = require('./lib/i18n');
 const {
   generateSBOM,
-  exportSBOMAsCycloneDxJson,
-  exportSBOMAsSpdx,
   checkProjectEnvironment,
   scanVulnerabilities,
   formatVulnerabilitySummary,
@@ -38,12 +37,20 @@ function activate(context) {
     await setScanner(vscode);
   });
 
+  const setSbomGeneratorCommand = vscode.commands.registerCommand('sbomTool.setSbomGenerator', async () => {
+    await setSbomGenerator(vscode);
+  });
+
   const setUiLanguageCommand = vscode.commands.registerCommand('sbomTool.setUiLanguage', async () => {
     await setUiLanguage(vscode);
   });
 
   const setResultOpenModeCommand = vscode.commands.registerCommand('sbomTool.setResultOpenMode', async () => {
     await setResultOpenMode(vscode);
+  });
+
+  const installToolsCommand = vscode.commands.registerCommand('sbomTool.installTools', async () => {
+    await installSbomTools(vscode);
   });
 
   const dashboardProviderDisposable = vscode.window.registerWebviewViewProvider('sbomTool.dashboard', dashboardViewProvider);
@@ -60,15 +67,19 @@ function activate(context) {
     generateAndScanCommand,
     checkCurrentProjectCommand,
     setScannerCommand,
+    setSbomGeneratorCommand,
     setUiLanguageCommand,
     setResultOpenModeCommand,
+    installToolsCommand,
     dashboardProviderDisposable,
     configurationWatcher,
     dashboardViewProvider
   );
 }
 
-function deactivate() {}
+function deactivate() {
+  return undefined;
+}
 
 async function pickTargetFolder(vscodeApi) {
   const folders = vscodeApi.workspace.workspaceFolders;
@@ -109,8 +120,253 @@ function writeTextFile(filePath, text) {
   fs.writeFileSync(filePath, text, 'utf-8');
 }
 
+function isCommandAvailable(command) {
+  try {
+    execSync(`which ${command}`, { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function timestampSuffix() {
-  return new Date().toISOString().replace(/[:.]/g, '-');
+  return new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-');
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function describeComponentScope(component) {
+  if (component.scope) {
+    return component.scope;
+  }
+
+  if (component.isDirect) {
+    return 'required';
+  }
+
+  if (component.isTransitive) {
+    return 'indirect';
+  }
+
+  return 'unknown';
+}
+
+function buildSbomHtmlReport(sbomResult, workspacePath) {
+  const normalized = sbomResult.normalized || { components: [], dependencies: [], metadata: {} };
+  const components = Array.isArray(normalized.components) ? normalized.components : [];
+  const dependencies = Array.isArray(normalized.dependencies) ? normalized.dependencies : [];
+  const metadata = normalized.metadata || {};
+  const title = `SBOM Report - ${path.basename(workspacePath)}`;
+  const componentTypes = new Map();
+  const ecosystems = new Map();
+  let directCount = 0;
+  let transitiveCount = 0;
+  let devCount = 0;
+
+  for (const component of components) {
+    const type = component.type || 'unknown';
+    componentTypes.set(type, (componentTypes.get(type) || 0) + 1);
+
+    const ecosystem = component.ecosystem || 'unknown';
+    ecosystems.set(ecosystem, (ecosystems.get(ecosystem) || 0) + 1);
+
+    if (component.isDirect) directCount += 1;
+    if (component.isTransitive) transitiveCount += 1;
+    if (component.isDev) devCount += 1;
+  }
+
+  function renderList(items) {
+    if (items.length === 0) {
+      return '<span class="muted">-</span>';
+    }
+
+    return items.map((item) => `<span class="chip">${escapeHtml(item)}</span>`).join(' ');
+  }
+
+  function renderMap(map) {
+    return renderList(
+      Array.from(map.entries())
+        .sort((left, right) => right[1] - left[1])
+        .slice(0, 8)
+        .map(([key, count]) => `${key}: ${count}`)
+    );
+  }
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>${escapeHtml(title)}</title>
+  <style>
+    :root {
+      --bg: #fffaf2;
+      --fg: #222222;
+      --muted: #6d6258;
+      --panel: #fffdf8;
+      --panel-strong: #f4ead8;
+      --border: #d8c5ab;
+      --accent: #8f4a20;
+      --accent-soft: rgba(143, 74, 32, 0.12);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #191513;
+        --fg: #f7efe5;
+        --muted: #c2b4a4;
+        --panel: #231d1a;
+        --panel-strong: #332923;
+        --border: #58483f;
+        --accent: #ffae6b;
+        --accent-soft: rgba(255, 174, 107, 0.12);
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: Georgia, 'Times New Roman', serif;
+      color: var(--fg);
+      background:
+        radial-gradient(circle at top left, var(--accent-soft), transparent 28%),
+        linear-gradient(180deg, var(--bg), var(--panel));
+    }
+    h1, h2 { margin: 0; }
+    h1 { font-size: 30px; margin-bottom: 8px; }
+    h2 { font-size: 18px; margin-bottom: 12px; }
+    p { margin: 0; }
+    .meta { color: var(--muted); margin-bottom: 18px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.05);
+    }
+    .eyebrow {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .big {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .chip {
+      display: inline-block;
+      margin: 0 8px 8px 0;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: var(--panel-strong);
+      border: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .muted { color: var(--muted); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      background: var(--panel);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      font-size: 12px;
+    }
+    th {
+      background: var(--panel-strong);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    tr:last-child td { border-bottom: none; }
+    .section { margin-top: 22px; }
+    code {
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      font-size: 11px;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  <p class="meta">Generated at ${escapeHtml(metadata.timestamp)} using ${escapeHtml(metadata.sbomGenerator || sbomResult.generator || 'unknown')} (${escapeHtml(metadata.generatorVersion || 'unknown version')})</p>
+
+  <div class="grid">
+    <div class="card"><div class="eyebrow">Project</div><div class="big">${escapeHtml(metadata.projectName || path.basename(workspacePath))}</div><div class="muted">${escapeHtml(metadata.projectVersion || 'unknown')}</div></div>
+    <div class="card"><div class="eyebrow">Components</div><div class="big">${escapeHtml(components.length)}</div><div class="muted">Dependencies listed in the SBOM</div></div>
+    <div class="card"><div class="eyebrow">Direct / Transitive</div><div class="big">${escapeHtml(directCount)} / ${escapeHtml(transitiveCount)}</div><div class="muted">Dev only: ${escapeHtml(devCount)}</div></div>
+    <div class="card"><div class="eyebrow">Relationships</div><div class="big">${escapeHtml(dependencies.length)}</div><div class="muted">Native format: ${escapeHtml(sbomResult.exportFormat || metadata.sourceFormat || 'unknown')}</div></div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Generator Summary</div>
+    <div>${renderList([
+      `Generator: ${metadata.sbomGenerator || sbomResult.generator || 'unknown'}`,
+      `Coverage mode: ${metadata.sourceFormat || 'unknown'}`,
+      metadata.warning || '',
+    ].filter(Boolean))}</div>
+  </div>
+
+  <div class="grid section">
+    <div class="card">
+      <h2>Package Types</h2>
+      <div>${renderMap(componentTypes)}</div>
+    </div>
+    <div class="card">
+      <h2>Ecosystems</h2>
+      <div>${renderMap(ecosystems)}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Component List</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Version</th>
+          <th>Type</th>
+          <th>Scope</th>
+          <th>Licenses</th>
+          <th>PURL / Ref</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${components.slice(0, 500).map((component) => `
+        <tr>
+          <td>${escapeHtml(component.name || '')}</td>
+          <td>${escapeHtml(component.version || '')}</td>
+          <td>${escapeHtml(component.type || '')}</td>
+          <td>${escapeHtml(describeComponentScope(component))}</td>
+          <td>${escapeHtml(Array.isArray(component.licenses) && component.licenses.length > 0 ? component.licenses.join(', ') : '-')}</td>
+          <td><code>${escapeHtml(component.purl || component.id || '')}</code></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>`;
 }
 
 function buildVulnerabilityHtmlReport(scanResult, workspacePath) {
@@ -268,10 +524,12 @@ function buildVulnerabilityHtmlReport(scanResult, workspacePath) {
 
 function buildProjectCheckMarkdown(environment, workspacePath) {
   let recommendation;
-  if (!environment.packageJsonExists) {
-    recommendation = '- package.json is missing. Vulnerability scan for npm dependencies may be skipped.';
+  if (environment.syftAvailable) {
+    recommendation = '- Ready. Syft is available, so broad SBOM generation can run across multiple ecosystems.';
   } else if (environment.trivyAvailable) {
-    recommendation = '- Ready. Trivy is available, so vulnerability scanning can run immediately.';
+    recommendation = '- Ready. Trivy is available, so broad SBOM generation and vulnerability scanning can run immediately.';
+  } else if (!environment.packageJsonExists) {
+    recommendation = '- No general SBOM CLI found. Install Syft or Trivy for broad language support.';
   } else if (environment.npmAvailable && environment.packageLockExists) {
     recommendation = '- Ready. npm audit can run with the existing package-lock.json.';
   } else if (environment.npmAvailable && !environment.packageLockExists) {
@@ -286,12 +544,56 @@ function buildProjectCheckMarkdown(environment, workspacePath) {
     `- Workspace: ${workspacePath}`,
     `- package.json: ${environment.packageJsonExists ? 'OK' : 'Missing'}`,
     `- package-lock.json: ${environment.packageLockExists ? 'OK' : 'Missing'}`,
+    `- syft command: ${environment.syftAvailable ? 'Available' : 'Not found'}`,
     `- npm command: ${environment.npmAvailable ? 'Available' : 'Not found'}`,
     `- trivy command: ${environment.trivyAvailable ? 'Available' : 'Not found'}`,
+    `- homebrew command: ${environment.brewAvailable ? 'Available' : 'Not found'}`,
     '',
     `## Recommendation`,
     recommendation,
   ].join('\n');
+}
+
+async function installSbomTools(vscodeApi) {
+  if (process.platform !== 'darwin') {
+    vscodeApi.window.showWarningMessage(t(vscodeApi, 'installToolsUnsupportedPlatform'));
+    return;
+  }
+
+  if (!isCommandAvailable('brew')) {
+    const selected = await vscodeApi.window.showWarningMessage(
+      t(vscodeApi, 'installToolsRequiresBrew'),
+      t(vscodeApi, 'openHomebrewSite')
+    );
+
+    if (selected) {
+      await vscodeApi.env.openExternal(vscodeApi.Uri.parse('https://brew.sh/'));
+    }
+    return;
+  }
+
+  const terminal = vscodeApi.window.createTerminal('SBOM Vulnerability Scanner Installer');
+  terminal.show();
+  terminal.sendText('brew install syft trivy', true);
+  vscodeApi.window.showInformationMessage(t(vscodeApi, 'installToolsStarted'));
+}
+
+async function maybeOfferToolInstallation(vscodeApi, environment, sbomResult) {
+  const missingGenerators = !environment.syftAvailable && !environment.trivyAvailable;
+  const fellBackToManifest = sbomResult && sbomResult.generator === 'manifest';
+
+  if (!missingGenerators || !fellBackToManifest || process.platform !== 'darwin') {
+    return;
+  }
+
+  const action = await vscodeApi.window.showWarningMessage(
+    t(vscodeApi, 'installToolsRecommendation'),
+    t(vscodeApi, 'installToolsAction')
+  );
+
+  if (action) {
+    await installSbomTools(vscodeApi);
+  }
 }
 
 function getDashboardState(vscodeApi) {
@@ -302,19 +604,23 @@ function getDashboardState(vscodeApi) {
   return {
     workspaceName: folder ? folder.uri.fsPath : t(vscodeApi, 'dashboardNoWorkspace'),
     scanner: config.get('vulnerabilityScanner', 'auto'),
+    sbomGenerator: config.get('sbomGenerator', 'auto'),
     uiLanguage: config.get('uiLanguage', 'auto'),
     resultOpenMode: config.get('resultOpenMode', 'vscode'),
     labels: {
       dashboardWorkspace: t(vscodeApi, 'dashboardWorkspace'),
       dashboardSettings: t(vscodeApi, 'dashboardSettings'),
       dashboardScanner: t(vscodeApi, 'dashboardScanner'),
+      dashboardSbomGenerator: t(vscodeApi, 'dashboardSbomGenerator'),
       dashboardUiLanguage: t(vscodeApi, 'dashboardUiLanguage'),
       dashboardOpenMode: t(vscodeApi, 'dashboardOpenMode'),
       dashboardGenerateSbom: t(vscodeApi, 'dashboardGenerateSbom'),
       dashboardScan: t(vscodeApi, 'dashboardScan'),
       dashboardGenerateAndScan: t(vscodeApi, 'dashboardGenerateAndScan'),
       dashboardCheckProject: t(vscodeApi, 'dashboardCheckProject'),
+      dashboardInstallTools: t(vscodeApi, 'dashboardInstallTools'),
       dashboardSetScanner: t(vscodeApi, 'dashboardSetScanner'),
+      dashboardSetSbomGenerator: t(vscodeApi, 'dashboardSetSbomGenerator'),
       dashboardSetUiLanguage: t(vscodeApi, 'dashboardSetUiLanguage'),
       dashboardSetOpenMode: t(vscodeApi, 'dashboardSetOpenMode'),
     },
@@ -335,25 +641,28 @@ async function runGenerateSbom(vscodeApi) {
     async () => {
       const config = vscodeApi.workspace.getConfiguration('sbomTool');
       const defaultFormat = config.get('defaultSbomFormat', 'cyclonedx-json');
+      const sbomGenerator = config.get('sbomGenerator', 'auto');
+      const environment = await checkProjectEnvironment(targetFolder.uri.fsPath);
 
-      const sbom = generateSBOM(targetFolder.uri.fsPath);
+      const sbomResult = await generateSBOM(targetFolder.uri.fsPath, {
+        format: defaultFormat,
+        preferredGenerator: sbomGenerator,
+      });
       const outputPath = ensureOutputDirectory(vscodeApi, targetFolder.uri.fsPath);
 
       const suffix = timestampSuffix();
       const rawSbomPath = path.join(outputPath, `sbom-raw-${suffix}.json`);
-      writeJsonFile(rawSbomPath, sbom);
+      writeJsonFile(rawSbomPath, sbomResult.normalized);
 
-      let exportPath;
-      if (defaultFormat === 'spdx') {
-        exportPath = path.join(outputPath, `sbom-spdx-${suffix}.spdx`);
-        fs.writeFileSync(exportPath, exportSBOMAsSpdx(sbom), 'utf-8');
-      } else {
-        exportPath = path.join(outputPath, `sbom-cyclonedx-${suffix}.json`);
-        fs.writeFileSync(exportPath, exportSBOMAsCycloneDxJson(sbom), 'utf-8');
-      }
+      const exportBaseName = defaultFormat === 'spdx' ? `sbom-spdx-${suffix}` : `sbom-cyclonedx-${suffix}`;
+      const exportPath = path.join(outputPath, `${exportBaseName}${sbomResult.exportFileExtension}`);
+      writeTextFile(exportPath, sbomResult.exportText);
+      const htmlReportPath = path.join(outputPath, `sbom-report-${suffix}.html`);
+      writeTextFile(htmlReportPath, buildSbomHtmlReport(sbomResult, targetFolder.uri.fsPath));
 
-      await openResultFile(vscodeApi, exportPath, 'SBOM Result');
-      vscodeApi.window.showInformationMessage(t(vscodeApi, 'SBOM generated: {0}', path.basename(exportPath)));
+      await openResultFile(vscodeApi, htmlReportPath, 'SBOM Report');
+      vscodeApi.window.showInformationMessage(t(vscodeApi, 'sbomGenerated', path.basename(exportPath)));
+      await maybeOfferToolInstallation(vscodeApi, environment, sbomResult);
       dashboardViewProvider?.render();
     }
   );
@@ -372,6 +681,7 @@ async function runVulnerabilityScan(vscodeApi) {
     async () => {
       const config = vscodeApi.workspace.getConfiguration('sbomTool');
       const scannerPreference = config.get('vulnerabilityScanner', 'auto');
+      const environment = await checkProjectEnvironment(targetFolder.uri.fsPath);
 
       const scanResult = await scanVulnerabilities(targetFolder.uri.fsPath, scannerPreference);
       const outputPath = ensureOutputDirectory(vscodeApi, targetFolder.uri.fsPath);
@@ -384,6 +694,15 @@ async function runVulnerabilityScan(vscodeApi) {
       const summary = formatVulnerabilitySummary(scanResult);
       await openResultFile(vscodeApi, htmlReportPath, 'Vulnerability Report');
       vscodeApi.window.showInformationMessage(summary);
+      if (scannerPreference === 'trivy' && !environment.trivyAvailable && process.platform === 'darwin') {
+        const action = await vscodeApi.window.showWarningMessage(
+          t(vscodeApi, 'installTrivyRecommendation'),
+          t(vscodeApi, 'installToolsAction')
+        );
+        if (action) {
+          await installSbomTools(vscodeApi);
+        }
+      }
       dashboardViewProvider?.render();
     }
   );
@@ -405,18 +724,21 @@ async function runGenerateAndScan(vscodeApi) {
       const config = vscodeApi.workspace.getConfiguration('sbomTool');
       const scannerPreference = config.get('vulnerabilityScanner', 'auto');
       const defaultFormat = config.get('defaultSbomFormat', 'cyclonedx-json');
+      const sbomGenerator = config.get('sbomGenerator', 'auto');
+      const environment = await checkProjectEnvironment(workspacePath);
 
       progress.report({ message: t(vscodeApi, 'Generating SBOM...') });
-      const sbom = generateSBOM(workspacePath);
+      const sbomResult = await generateSBOM(workspacePath, {
+        format: defaultFormat,
+        preferredGenerator: sbomGenerator,
+      });
       const suffix = timestampSuffix();
       const rawSbomPath = path.join(outputPath, `sbom-raw-${suffix}.json`);
-      writeJsonFile(rawSbomPath, sbom);
-
-      if (defaultFormat === 'spdx') {
-        fs.writeFileSync(path.join(outputPath, `sbom-spdx-${suffix}.spdx`), exportSBOMAsSpdx(sbom), 'utf-8');
-      } else {
-        fs.writeFileSync(path.join(outputPath, `sbom-cyclonedx-${suffix}.json`), exportSBOMAsCycloneDxJson(sbom), 'utf-8');
-      }
+      writeJsonFile(rawSbomPath, sbomResult.normalized);
+      const sbomExportBaseName = defaultFormat === 'spdx' ? `sbom-spdx-${suffix}` : `sbom-cyclonedx-${suffix}`;
+      writeTextFile(path.join(outputPath, `${sbomExportBaseName}${sbomResult.exportFileExtension}`), sbomResult.exportText);
+      const sbomHtmlReportPath = path.join(outputPath, `sbom-report-${suffix}.html`);
+      writeTextFile(sbomHtmlReportPath, buildSbomHtmlReport(sbomResult, workspacePath));
 
       progress.report({ message: t(vscodeApi, 'Running vulnerability scan...') });
       const scanResult = await scanVulnerabilities(workspacePath, scannerPreference);
@@ -426,8 +748,9 @@ async function runGenerateAndScan(vscodeApi) {
       writeTextFile(htmlReportPath, buildVulnerabilityHtmlReport(scanResult, workspacePath));
 
       const summary = formatVulnerabilitySummary(scanResult);
-      await openResultFile(vscodeApi, htmlReportPath, 'SBOM + Vulnerability Report');
+      await openResultFile(vscodeApi, sbomHtmlReportPath, 'SBOM Report');
       vscodeApi.window.showInformationMessage(t(vscodeApi, 'Done: {0}', summary));
+      await maybeOfferToolInstallation(vscodeApi, environment, sbomResult);
       dashboardViewProvider?.render();
     }
   );
@@ -461,6 +784,24 @@ async function setScanner(vscodeApi) {
   if (!selected) return;
   await config.update('vulnerabilityScanner', selected.label, vscodeApi.ConfigurationTarget.Workspace);
   vscodeApi.window.showInformationMessage(t(vscodeApi, 'scannerUpdated', selected.label));
+  dashboardViewProvider?.render();
+}
+
+async function setSbomGenerator(vscodeApi) {
+  const config = vscodeApi.workspace.getConfiguration('sbomTool');
+  const selected = await vscodeApi.window.showQuickPick(
+    [
+      { label: 'auto', description: 'Syft first, then Trivy, then built-in manifest parser' },
+      { label: 'syft', description: 'Use Syft only for broad SBOM generation' },
+      { label: 'trivy', description: 'Use Trivy only for filesystem SBOM generation' },
+      { label: 'manifest', description: 'Use built-in package manifest parsing only' },
+    ],
+    { title: t(vscodeApi, 'sbomGeneratorSelectionTitle') }
+  );
+
+  if (!selected) return;
+  await config.update('sbomGenerator', selected.label, vscodeApi.ConfigurationTarget.Workspace);
+  vscodeApi.window.showInformationMessage(t(vscodeApi, 'sbomGeneratorUpdated', selected.label));
   dashboardViewProvider?.render();
 }
 

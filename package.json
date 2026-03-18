@@ -1,5 +1,5 @@
 {
-  "name": "sbom-tool",
+  "name": "sbom-vulnerability-scanner",
   "displayName": "%ext.displayName%",
   "description": "%ext.description%",
   "version": "0.1.6",
@@ -87,12 +87,20 @@
         "title": "%command.setScanner%"
       },
       {
+        "command": "sbomTool.setSbomGenerator",
+        "title": "%command.setSbomGenerator%"
+      },
+      {
         "command": "sbomTool.setUiLanguage",
         "title": "%command.setUiLanguage%"
       },
       {
         "command": "sbomTool.setResultOpenMode",
         "title": "%command.setResultOpenMode%"
+      },
+      {
+        "command": "sbomTool.installTools",
+        "title": "%command.installTools%"
       }
     ],
     "menus": {
@@ -136,6 +144,17 @@
           "default": "auto",
           "description": "%config.vulnerabilityScanner.description%"
         },
+        "sbomTool.sbomGenerator": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "syft",
+            "trivy",
+            "manifest"
+          ],
+          "default": "auto",
+          "description": "%config.sbomGenerator.description%"
+        },
         "sbomTool.uiLanguage": {
           "type": "string",
           "enum": [
@@ -160,7 +179,7 @@
   },
   "scripts": {
     "package": "npx @vscode/vsce package",
-    "package:release": "mkdir -p releases && VERSION=$(node -p \"require('./package.json').version\") && npx @vscode/vsce package -o releases/sbom-tool-$VERSION.vsix && cp releases/sbom-tool-$VERSION.vsix releases/sbom-tool-latest.vsix",
+    "package:release": "mkdir -p releases && VERSION=$(node -p \"require('./package.json').version\") && npx @vscode/vsce package -o releases/sbom-vulnerability-scanner-$VERSION.vsix && cp releases/sbom-vulnerability-scanner-$VERSION.vsix releases/sbom-vulnerability-scanner-latest.vsix",
     "release:patch": "npm version patch --no-git-tag-version && npm run package:release",
     "publish:marketplace": "npx @vscode/vsce publish",
     "publish:patch": "npx @vscode/vsce publish patch",

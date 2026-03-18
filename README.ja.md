@@ -1,30 +1,31 @@
-# SBOMツール
+# SBOM Vulnerability Scanner
 
 - English: [README.md](README.md)
 - 日本語: [README.ja.md](README.ja.md)
 
-SBOMツールは、現在開いているワークスペースに対してSBOM生成と脆弱性チェックを実行します。
+SBOM Vulnerability Scanner は、現在開いているワークスペースに対してSBOM生成と脆弱性チェックを実行します。
 
 ## VSIXダウンロード
 
 インストールには次のファイルを利用してください。
 
-- [releases/sbom-tool-latest.vsix](releases/sbom-tool-latest.vsix)
+- [releases/sbom-vulnerability-scanner-latest.vsix](releases/sbom-vulnerability-scanner-latest.vsix)
 
 バージョン固定で使いたい場合は [releases](releases) 配下のファイルを選択してください。
-例: `releases/sbom-tool-<version>.vsix`
+例: `releases/sbom-vulnerability-scanner-<version>.vsix`
 
 ## Marketplaceからインストール（推奨）
 
-VS Code Marketplaceに公開後は、拡張ビューからSBOM Toolをインストールできます。
+VS Code Marketplaceに公開後は、拡張ビューからSBOM Vulnerability Scanner をインストールできます。
 Marketplace経由でインストールした場合は自動アップデートに対応します。
 
 ## ダッシュボード（アクティビティバー）
 
-インストール後、アクティビティバーにSBOMツールのアイコンが表示されます。
+インストール後、アクティビティバーに SBOM Vulnerability Scanner のアイコンが表示されます。
 ダッシュボードから次の操作が可能です。
 
 - 現在開いているプロジェクトのチェック
+- SBOM生成器の切り替え（`auto` / `syft` / `trivy` / `manifest`）
 - 脆弱性スキャナの切り替え（`auto` / `trivy` / `npm-audit`）
 - UI言語の切り替え（`auto` / `en` / `ja`）
 - 結果表示モードの切り替え（`vscode` / `external`）
@@ -32,20 +33,25 @@ Marketplace経由でインストールした場合は自動アップデートに
 
 ## コマンド
 
-- `SBOM Tool: Generate SBOM`
-- `SBOM Tool: Scan Vulnerabilities`
-- `SBOM Tool: Generate SBOM + Scan Vulnerabilities`
-- `SBOM Tool: Check Current Project`
-- `SBOM Tool: Select Scanner`
-- `SBOM Tool: Select UI Language`
-- `SBOM Tool: Select Result Open Mode`
+- `SBOM Vulnerability Scanner: Generate SBOM`
+- `SBOM Vulnerability Scanner: Scan Vulnerabilities`
+- `SBOM Vulnerability Scanner: Generate SBOM + Scan Vulnerabilities`
+- `SBOM Vulnerability Scanner: Check Current Project`
+- `SBOM Vulnerability Scanner: Select Scanner`
+- `SBOM Vulnerability Scanner: Select SBOM Generator`
+- `SBOM Vulnerability Scanner: Select UI Language`
+- `SBOM Vulnerability Scanner: Select Result Open Mode`
+- `SBOM Vulnerability Scanner: Syft と Trivy をインストール`
+
+macOS では、このインストールコマンドを使うと統合ターミナルで `brew install syft trivy` を実行します。
 
 ## 出力
 
 デフォルトでは、ワークスペース内の`.sbom-tool/`に出力されます。
 
 - `sbom-raw-*.json`: 内部解析用SBOMデータ
-- `sbom-cyclonedx-*.json` または `sbom-spdx-*.spdx`: エクスポートされたSBOM
+- `sbom-cyclonedx-*.json` または `sbom-spdx-*.*`: エクスポートされたSBOM
+- `sbom-report-*.html`: 人が読みやすいSBOMレポート
 - `vulnerability-report-*.json`: 脆弱性スキャン結果
 
 ## 設定
@@ -54,6 +60,11 @@ Marketplace経由でインストールした場合は自動アップデートに
 - `sbomTool.defaultSbomFormat`（初期値: `cyclonedx-json`）
   - `cyclonedx-json`
   - `spdx`
+- `sbomTool.sbomGenerator`（初期値: `auto`）
+  - `auto`: Syft を優先し、次に Trivy、最後に組み込みマニフェスト解析へフォールバック
+  - `syft`: Syft のみ使用
+  - `trivy`: Trivy のみ使用
+  - `manifest`: 組み込みマニフェスト解析のみ使用
 - `sbomTool.vulnerabilityScanner`（初期値: `auto`）
   - `auto`: Trivyを優先し、失敗時はnpm auditへフォールバック
   - `trivy`: Trivyのみ使用
@@ -68,8 +79,11 @@ Marketplace経由でインストールした場合は自動アップデートに
 
 ## 前提条件
 
-- Node.js / npm
-- Trivy（`trivy`モードを使う場合）
+- 幅広い言語とパッケージマネージャに対応するには Syft
+- Trivy ベースのSBOM生成や脆弱性スキャンを使う場合は Trivy
+- 組み込みマニフェスト解析や npm audit を使う場合は Node.js / npm
+
+macOS では、拡張から Homebrew 経由の Syft / Trivy インストール開始に対応しています。
 
 ## 言語サポート
 
