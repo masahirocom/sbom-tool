@@ -2,7 +2,7 @@
   "name": "sbom-vulnerability-scanner",
   "displayName": "%ext.displayName%",
   "description": "%ext.description%",
-  "version": "0.1.6",
+  "version": "0.1.9",
   "publisher": "masahirocom",
   "private": false,
   "license": "Apache-2.0",
@@ -101,6 +101,30 @@
       {
         "command": "sbomTool.installTools",
         "title": "%command.installTools%"
+      },
+      {
+        "command": "sbomTool.openLatestSbomReport",
+        "title": "%command.openLatestSbomReport%"
+      },
+      {
+        "command": "sbomTool.openLatestVulnerabilityReport",
+        "title": "%command.openLatestVulnerabilityReport%"
+      },
+      {
+        "command": "sbomTool.openLatestSbomJson",
+        "title": "%command.openLatestSbomJson%"
+      },
+      {
+        "command": "sbomTool.openLatestVulnerabilityJson",
+        "title": "%command.openLatestVulnerabilityJson%"
+      },
+      {
+        "command": "sbomTool.openOutputDirectory",
+        "title": "%command.openOutputDirectory%"
+      },
+      {
+        "command": "sbomTool.cleanOldResults",
+        "title": "%command.cleanOldResults%"
       }
     ],
     "menus": {
