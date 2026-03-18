@@ -41,9 +41,11 @@ From the Dashboard you can:
 - `SBOM Vulnerability Scanner: Select SBOM Generator`
 - `SBOM Vulnerability Scanner: Select UI Language`
 - `SBOM Vulnerability Scanner: Select Result Open Mode`
-- `SBOM Vulnerability Scanner: Install Syft and Trivy`
+- `SBOM Vulnerability Scanner: Set Up Syft and Trivy`
 
-On macOS, the install command opens the integrated terminal and runs `brew install syft trivy`.
+The setup command is explicit and user-driven.
+On macOS or Linux with Homebrew installed, it can open the integrated terminal and run `brew install syft trivy` only after the user selects that option.
+On any platform, it can open the official Syft and Trivy installation guides.
 
 ## Output
 
@@ -83,7 +85,7 @@ By default, output files are generated under `.sbom-tool/` in your workspace.
 - Trivy installed when using Trivy-based SBOM generation or vulnerability scanning
 - Node.js / npm when using the built-in manifest fallback or npm audit
 
-For macOS users, the extension can start installing Syft and Trivy automatically through Homebrew.
+Use the setup command from the dashboard or command palette to choose how to install or review setup instructions.
 
 ## Language Support
 

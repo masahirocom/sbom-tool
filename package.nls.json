@@ -9,7 +9,7 @@
   "command.setSbomGenerator": "SBOM Vulnerability Scanner: Select SBOM Generator",
   "command.setUiLanguage": "SBOM Vulnerability Scanner: Select UI Language",
   "command.setResultOpenMode": "SBOM Vulnerability Scanner: Select Result Open Mode",
-  "command.installTools": "SBOM Vulnerability Scanner: Install Syft and Trivy",
+  "command.installTools": "SBOM Vulnerability Scanner: Set Up Syft and Trivy",
   "viewContainer.title": "SBOM Vulnerability Scanner",
   "view.dashboard.name": "Dashboard",
   "config.title": "SBOM Vulnerability Scanner",
