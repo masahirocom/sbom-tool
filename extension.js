@@ -53,6 +53,49 @@ function activate(context) {
     await installSbomTools(vscode);
   });
 
+  const openLatestSbomReportCommand = vscode.commands.registerCommand('sbomTool.openLatestSbomReport', async () => {
+    await openLatestResult(vscode, {
+      title: 'SBOM Report',
+      missingLabel: t(vscode, 'resultLabelSbomReport'),
+      rules: [{ prefix: 'sbom-report-', extension: '.html' }],
+    });
+  });
+
+  const openLatestVulnerabilityReportCommand = vscode.commands.registerCommand('sbomTool.openLatestVulnerabilityReport', async () => {
+    await openLatestResult(vscode, {
+      title: 'Vulnerability Report',
+      missingLabel: t(vscode, 'resultLabelVulnerabilityReport'),
+      rules: [{ prefix: 'vulnerability-report-', extension: '.html' }],
+    });
+  });
+
+  const openLatestSbomJsonCommand = vscode.commands.registerCommand('sbomTool.openLatestSbomJson', async () => {
+    await openLatestResult(vscode, {
+      title: 'SBOM JSON',
+      missingLabel: t(vscode, 'resultLabelSbomJson'),
+      rules: [
+        { prefix: 'sbom-raw-', extension: '.json' },
+        { prefix: 'sbom-cyclonedx-', extension: '.json' },
+      ],
+    });
+  });
+
+  const openLatestVulnerabilityJsonCommand = vscode.commands.registerCommand('sbomTool.openLatestVulnerabilityJson', async () => {
+    await openLatestResult(vscode, {
+      title: 'Vulnerability JSON',
+      missingLabel: t(vscode, 'resultLabelVulnerabilityJson'),
+      rules: [{ prefix: 'vulnerability-report-', extension: '.json' }],
+    });
+  });
+
+  const openOutputDirectoryCommand = vscode.commands.registerCommand('sbomTool.openOutputDirectory', async () => {
+    await openOutputDirectory(vscode);
+  });
+
+  const cleanOldResultsCommand = vscode.commands.registerCommand('sbomTool.cleanOldResults', async () => {
+    await cleanOldResults(vscode);
+  });
+
   const dashboardProviderDisposable = vscode.window.registerWebviewViewProvider('sbomTool.dashboard', dashboardViewProvider);
 
   const configurationWatcher = vscode.workspace.onDidChangeConfiguration((event) => {
@@ -71,6 +114,12 @@ function activate(context) {
     setUiLanguageCommand,
     setResultOpenModeCommand,
     installToolsCommand,
+    openLatestSbomReportCommand,
+    openLatestVulnerabilityReportCommand,
+    openLatestSbomJsonCommand,
+    openLatestVulnerabilityJsonCommand,
+    openOutputDirectoryCommand,
+    cleanOldResultsCommand,
     dashboardProviderDisposable,
     configurationWatcher,
     dashboardViewProvider
@@ -110,6 +159,134 @@ function ensureOutputDirectory(vscodeApi, workspacePath) {
   const outputPath = path.resolve(workspacePath, outputDirectory);
   fs.mkdirSync(outputPath, { recursive: true });
   return outputPath;
+}
+
+function listResultFiles(outputPath) {
+  if (!fs.existsSync(outputPath)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(outputPath, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => {
+      const fullPath = path.join(outputPath, entry.name);
+      const stat = fs.statSync(fullPath);
+      return {
+        name: entry.name,
+        fullPath,
+        mtimeMs: stat.mtimeMs,
+      };
+    })
+    .sort((left, right) => right.mtimeMs - left.mtimeMs);
+}
+
+function findLatestByRules(resultFiles, rules) {
+  for (const rule of rules) {
+    const matched = resultFiles.find((file) =>
+      file.name.startsWith(rule.prefix) && file.name.endsWith(rule.extension)
+    );
+    if (matched) {
+      return matched;
+    }
+  }
+
+  return undefined;
+}
+
+async function openLatestResult(vscodeApi, options) {
+  const targetFolder = await pickTargetFolder(vscodeApi);
+  if (!targetFolder) return;
+
+  const outputPath = ensureOutputDirectory(vscodeApi, targetFolder.uri.fsPath);
+  const resultFiles = listResultFiles(outputPath);
+  const latest = findLatestByRules(resultFiles, options.rules || []);
+
+  if (!latest) {
+    vscodeApi.window.showWarningMessage(t(vscodeApi, 'noGeneratedFileFound', options.missingLabel || 'result'));
+    return;
+  }
+
+  await openResultFile(vscodeApi, latest.fullPath, options.title || latest.name);
+}
+
+async function openOutputDirectory(vscodeApi) {
+  const targetFolder = await pickTargetFolder(vscodeApi);
+  if (!targetFolder) return;
+
+  const outputPath = ensureOutputDirectory(vscodeApi, targetFolder.uri.fsPath);
+  await vscodeApi.commands.executeCommand('revealFileInOS', vscodeApi.Uri.file(outputPath));
+}
+
+async function cleanOldResults(vscodeApi) {
+  const targetFolder = await pickTargetFolder(vscodeApi);
+  if (!targetFolder) return;
+
+  const outputPath = ensureOutputDirectory(vscodeApi, targetFolder.uri.fsPath);
+  const resultFiles = listResultFiles(outputPath).filter((file) =>
+    /^(sbom-raw-|sbom-cyclonedx-|sbom-spdx-|sbom-report-|vulnerability-report-|project-check-)/.test(file.name)
+  );
+
+  if (resultFiles.length === 0) {
+    vscodeApi.window.showInformationMessage(t(vscodeApi, 'noOldResultsToDelete'));
+    return;
+  }
+
+  const selected = await vscodeApi.window.showQuickPick(
+    [
+      {
+        label: 'keep-latest',
+        description: t(vscodeApi, 'cleanKeepLatestDescription'),
+      },
+      {
+        label: 'delete-all',
+        description: t(vscodeApi, 'cleanDeleteAllDescription'),
+      },
+    ],
+    { title: t(vscodeApi, 'cleanOldResultsTitle') }
+  );
+
+  if (!selected) return;
+
+  let deleteTargets = [];
+  if (selected.label === 'delete-all') {
+    deleteTargets = resultFiles;
+  } else {
+    function getGroupKey(fileName) {
+      if (fileName.startsWith('sbom-raw-') && fileName.endsWith('.json')) return 'sbom-raw-json';
+      if (fileName.startsWith('sbom-cyclonedx-') && fileName.endsWith('.json')) return 'sbom-cyclonedx-json';
+      if (fileName.startsWith('sbom-spdx-')) return 'sbom-spdx';
+      if (fileName.startsWith('sbom-report-') && fileName.endsWith('.html')) return 'sbom-report-html';
+      if (fileName.startsWith('vulnerability-report-') && fileName.endsWith('.json')) return 'vulnerability-report-json';
+      if (fileName.startsWith('vulnerability-report-') && fileName.endsWith('.html')) return 'vulnerability-report-html';
+      if (fileName.startsWith('project-check-') && fileName.endsWith('.md')) return 'project-check-md';
+      return 'other';
+    }
+
+    const latestByGroup = new Map();
+    for (const file of resultFiles) {
+      const key = getGroupKey(file.name);
+      if (!latestByGroup.has(key)) {
+        latestByGroup.set(key, file);
+      }
+    }
+
+    const keepSet = new Set(Array.from(latestByGroup.values()).map((file) => file.fullPath));
+    deleteTargets = resultFiles.filter((file) => !keepSet.has(file.fullPath));
+  }
+
+  for (const file of deleteTargets) {
+    try {
+      fs.unlinkSync(file.fullPath);
+    } catch {
+    }
+  }
+
+  if (deleteTargets.length === 0) {
+    vscodeApi.window.showInformationMessage(t(vscodeApi, 'noOldResultsToDelete'));
+  } else {
+    vscodeApi.window.showInformationMessage(t(vscodeApi, 'oldResultsDeleted', deleteTargets.length));
+  }
 }
 
 function writeJsonFile(filePath, data) {
@@ -636,6 +813,12 @@ function getDashboardState(vscodeApi) {
       dashboardSetSbomGenerator: t(vscodeApi, 'dashboardSetSbomGenerator'),
       dashboardSetUiLanguage: t(vscodeApi, 'dashboardSetUiLanguage'),
       dashboardSetOpenMode: t(vscodeApi, 'dashboardSetOpenMode'),
+      dashboardOpenLatestSbomReport: t(vscodeApi, 'dashboardOpenLatestSbomReport'),
+      dashboardOpenLatestVulnerabilityReport: t(vscodeApi, 'dashboardOpenLatestVulnerabilityReport'),
+      dashboardOpenLatestSbomJson: t(vscodeApi, 'dashboardOpenLatestSbomJson'),
+      dashboardOpenLatestVulnerabilityJson: t(vscodeApi, 'dashboardOpenLatestVulnerabilityJson'),
+      dashboardOpenOutputDirectory: t(vscodeApi, 'dashboardOpenOutputDirectory'),
+      dashboardCleanOldResults: t(vscodeApi, 'dashboardCleanOldResults'),
     },
     language,
   };
