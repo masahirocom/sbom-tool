@@ -1,5 +1,7 @@
 # SBOM Vulnerability Scanner
 
+**GitHubリポジトリ**: [masahirocom/sbom-vulnerability-scanner](https://github.com/masahirocom/sbom-vulnerability-scanner)
+
 - English: [README.md](README.md)
 - 日本語: [README.ja.md](README.ja.md)
 
