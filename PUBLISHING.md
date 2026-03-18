@@ -46,3 +46,18 @@ npm run release:patch
 Generated files:
 - `releases/sbom-vulnerability-scanner-latest.vsix`
 - `releases/sbom-vulnerability-scanner-<version>.vsix`
+
+## 6) Automatic VSIX build on release push
+
+When you push a release tag (for example `v0.1.7`), GitHub Actions automatically:
+
+- builds the VSIX
+- uploads it as workflow artifacts
+- attaches the VSIX files to the GitHub Release for that tag
+
+Example:
+
+```bash
+git tag -a v0.1.7 -m "Release v0.1.7"
+git push origin v0.1.7
+```
