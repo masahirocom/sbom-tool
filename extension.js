@@ -1,7 +1,6 @@
 const vscode = require('vscode');
 const path = require('node:path');
 const fs = require('node:fs');
-const { execSync } = require('node:child_process');
 const { SbomDashboardViewProvider } = require('./lib/dashboardView');
 const { openResultFile } = require('./lib/reportViewer');
 const { t, getUiLanguage } = require('./lib/i18n');
@@ -11,6 +10,15 @@ const {
   scanVulnerabilities,
   formatVulnerabilitySummary,
 } = require('./lib/scanner');
+const {
+  escapeHtml,
+  timestampSuffix,
+  listResultFiles,
+  writeJsonFile,
+  writeTextFile,
+  isCommandAvailable,
+  getGroupKey,
+} = require('./lib/common');
 
 let dashboardViewProvider;
 
@@ -161,25 +169,7 @@ function ensureOutputDirectory(vscodeApi, workspacePath) {
   return outputPath;
 }
 
-function listResultFiles(outputPath) {
-  if (!fs.existsSync(outputPath)) {
-    return [];
-  }
 
-  return fs
-    .readdirSync(outputPath, { withFileTypes: true })
-    .filter((entry) => entry.isFile())
-    .map((entry) => {
-      const fullPath = path.join(outputPath, entry.name);
-      const stat = fs.statSync(fullPath);
-      return {
-        name: entry.name,
-        fullPath,
-        mtimeMs: stat.mtimeMs,
-      };
-    })
-    .sort((left, right) => right.mtimeMs - left.mtimeMs);
-}
 
 function findLatestByRules(resultFiles, rules) {
   for (const rule of rules) {
@@ -252,17 +242,6 @@ async function cleanOldResults(vscodeApi) {
   if (selected.label === 'delete-all') {
     deleteTargets = resultFiles;
   } else {
-    function getGroupKey(fileName) {
-      if (fileName.startsWith('sbom-raw-') && fileName.endsWith('.json')) return 'sbom-raw-json';
-      if (fileName.startsWith('sbom-cyclonedx-') && fileName.endsWith('.json')) return 'sbom-cyclonedx-json';
-      if (fileName.startsWith('sbom-spdx-')) return 'sbom-spdx';
-      if (fileName.startsWith('sbom-report-') && fileName.endsWith('.html')) return 'sbom-report-html';
-      if (fileName.startsWith('vulnerability-report-') && fileName.endsWith('.json')) return 'vulnerability-report-json';
-      if (fileName.startsWith('vulnerability-report-') && fileName.endsWith('.html')) return 'vulnerability-report-html';
-      if (fileName.startsWith('project-check-') && fileName.endsWith('.md')) return 'project-check-md';
-      return 'other';
-    }
-
     const latestByGroup = new Map();
     for (const file of resultFiles) {
       const key = getGroupKey(file.name);
@@ -289,36 +268,7 @@ async function cleanOldResults(vscodeApi) {
   }
 }
 
-function writeJsonFile(filePath, data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
-}
 
-function writeTextFile(filePath, text) {
-  fs.writeFileSync(filePath, text, 'utf-8');
-}
-
-function isCommandAvailable(command) {
-  try {
-    const checkCommand = process.platform === 'win32' ? `where ${command}` : `which ${command}`;
-    execSync(checkCommand, { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function timestampSuffix() {
-  return new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-');
-}
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
 
 function describeComponentScope(component) {
   if (component.scope) {
@@ -475,15 +425,6 @@ async function ensureSbomToolsInstalled(vscodeApi, workspacePath) {
 
 function buildVulnerabilityHtmlReport(scanResult, workspacePath) {
   const title = `Vulnerability Report - ${path.basename(workspacePath)}`;
-
-  function escapeHtml(value) {
-    return String(value ?? '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
-  }
 
   function toSafeLink(url, label) {
     const value = String(url || '').trim();
