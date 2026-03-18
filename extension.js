@@ -162,43 +162,8 @@ function describeComponentScope(component) {
 function buildSbomHtmlReport(sbomResult, workspacePath) {
   const normalized = sbomResult.normalized || { components: [], dependencies: [], metadata: {} };
   const components = Array.isArray(normalized.components) ? normalized.components : [];
-  const dependencies = Array.isArray(normalized.dependencies) ? normalized.dependencies : [];
   const metadata = normalized.metadata || {};
   const title = `SBOM Report - ${path.basename(workspacePath)}`;
-  const componentTypes = new Map();
-  const ecosystems = new Map();
-  let directCount = 0;
-  let transitiveCount = 0;
-  let devCount = 0;
-
-  for (const component of components) {
-    const type = component.type || 'unknown';
-    componentTypes.set(type, (componentTypes.get(type) || 0) + 1);
-
-    const ecosystem = component.ecosystem || 'unknown';
-    ecosystems.set(ecosystem, (ecosystems.get(ecosystem) || 0) + 1);
-
-    if (component.isDirect) directCount += 1;
-    if (component.isTransitive) transitiveCount += 1;
-    if (component.isDev) devCount += 1;
-  }
-
-  function renderList(items) {
-    if (items.length === 0) {
-      return '<span class="muted">-</span>';
-    }
-
-    return items.map((item) => `<span class="chip">${escapeHtml(item)}</span>`).join(' ');
-  }
-
-  function renderMap(map) {
-    return renderList(
-      Array.from(map.entries())
-        .sort((left, right) => right[1] - left[1])
-        .slice(0, 8)
-        .map(([key, count]) => `${key}: ${count}`)
-    );
-  }
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -209,102 +174,62 @@ function buildSbomHtmlReport(sbomResult, workspacePath) {
   <title>${escapeHtml(title)}</title>
   <style>
     :root {
-      --bg: #fffaf2;
-      --fg: #222222;
-      --muted: #6d6258;
-      --panel: #fffdf8;
-      --panel-strong: #f4ead8;
-      --border: #d8c5ab;
-      --accent: #8f4a20;
-      --accent-soft: rgba(143, 74, 32, 0.12);
+      --bg: #ffffff;
+      --fg: #1f2328;
+      --muted: #57606a;
+      --border: #d0d7de;
+      --panel: #f6f8fa;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #191513;
-        --fg: #f7efe5;
-        --muted: #c2b4a4;
-        --panel: #231d1a;
-        --panel-strong: #332923;
-        --border: #58483f;
-        --accent: #ffae6b;
-        --accent-soft: rgba(255, 174, 107, 0.12);
+        --bg: #0d1117;
+        --fg: #c9d1d9;
+        --muted: #8b949e;
+        --border: #30363d;
+        --panel: #161b22;
       }
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       padding: 24px;
-      font-family: Georgia, 'Times New Roman', serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       color: var(--fg);
-      background:
-        radial-gradient(circle at top left, var(--accent-soft), transparent 28%),
-        linear-gradient(180deg, var(--bg), var(--panel));
+      background: var(--bg);
     }
-    h1, h2 { margin: 0; }
-    h1 { font-size: 30px; margin-bottom: 8px; }
-    h2 { font-size: 18px; margin-bottom: 12px; }
+    h1, h2 { margin: 0 0 8px 0; }
+    h1 { font-size: 28px; }
+    h2 { font-size: 20px; }
     p { margin: 0; }
     .meta { color: var(--muted); margin-bottom: 18px; }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-    .card {
+    .summary {
       background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 16px;
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.05);
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 16px;
+      line-height: 1.6;
     }
-    .eyebrow {
-      color: var(--muted);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 8px;
-    }
-    .big {
-      font-size: 24px;
-      font-weight: 700;
-    }
-    .chip {
-      display: inline-block;
-      margin: 0 8px 8px 0;
-      padding: 5px 10px;
-      border-radius: 999px;
-      background: var(--panel-strong);
-      border: 1px solid var(--border);
-      font-size: 12px;
-    }
-    .muted { color: var(--muted); }
+    .section { margin-top: 20px; }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 12px;
-      background: var(--panel);
-      border-radius: 16px;
-      overflow: hidden;
+      margin-top: 8px;
     }
     th, td {
-      padding: 10px 12px;
+      border: 1px solid var(--border);
+      padding: 8px;
       text-align: left;
-      border-bottom: 1px solid var(--border);
       vertical-align: top;
-      font-size: 12px;
+      font-size: 13px;
     }
     th {
-      background: var(--panel-strong);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
+      background: var(--panel);
+      font-weight: 600;
     }
-    tr:last-child td { border-bottom: none; }
-    .section { margin-top: 22px; }
     code {
-      font-family: 'SFMono-Regular', Consolas, monospace;
-      font-size: 11px;
+      font-family: SFMono-Regular, Consolas, monospace;
+      font-size: 12px;
       word-break: break-all;
     }
   </style>
@@ -312,32 +237,13 @@ function buildSbomHtmlReport(sbomResult, workspacePath) {
 <body>
   <h1>${escapeHtml(title)}</h1>
   <p class="meta">Generated at ${escapeHtml(metadata.timestamp)} using ${escapeHtml(metadata.sbomGenerator || sbomResult.generator || 'unknown')} (${escapeHtml(metadata.generatorVersion || 'unknown version')})</p>
-
-  <div class="grid">
-    <div class="card"><div class="eyebrow">Project</div><div class="big">${escapeHtml(metadata.projectName || path.basename(workspacePath))}</div><div class="muted">${escapeHtml(metadata.projectVersion || 'unknown')}</div></div>
-    <div class="card"><div class="eyebrow">Components</div><div class="big">${escapeHtml(components.length)}</div><div class="muted">Dependencies listed in the SBOM</div></div>
-    <div class="card"><div class="eyebrow">Direct / Transitive</div><div class="big">${escapeHtml(directCount)} / ${escapeHtml(transitiveCount)}</div><div class="muted">Dev only: ${escapeHtml(devCount)}</div></div>
-    <div class="card"><div class="eyebrow">Relationships</div><div class="big">${escapeHtml(dependencies.length)}</div><div class="muted">Native format: ${escapeHtml(sbomResult.exportFormat || metadata.sourceFormat || 'unknown')}</div></div>
-  </div>
-
-  <div class="card">
-    <div class="eyebrow">Generator Summary</div>
-    <div>${renderList([
-      `Generator: ${metadata.sbomGenerator || sbomResult.generator || 'unknown'}`,
-      `Coverage mode: ${metadata.sourceFormat || 'unknown'}`,
-      metadata.warning || '',
-    ].filter(Boolean))}</div>
-  </div>
-
-  <div class="grid section">
-    <div class="card">
-      <h2>Package Types</h2>
-      <div>${renderMap(componentTypes)}</div>
-    </div>
-    <div class="card">
-      <h2>Ecosystems</h2>
-      <div>${renderMap(ecosystems)}</div>
-    </div>
+  <div class="summary">
+    <div>Project: ${escapeHtml(metadata.projectName || path.basename(workspacePath))}</div>
+    <div>Version: ${escapeHtml(metadata.projectVersion || 'unknown')}</div>
+    <div>Components: ${escapeHtml(components.length)}</div>
+    <div>Format: ${escapeHtml(sbomResult.exportFormat || metadata.sourceFormat || 'unknown')}</div>
+    <div>Generator: ${escapeHtml(metadata.sbomGenerator || sbomResult.generator || 'unknown')}</div>
+    ${metadata.warning ? `<div>Note: ${escapeHtml(metadata.warning)}</div>` : ''}
   </div>
 
   <div class="section">
@@ -368,6 +274,24 @@ function buildSbomHtmlReport(sbomResult, workspacePath) {
   </div>
 </body>
 </html>`;
+}
+
+async function ensureSbomToolsInstalled(vscodeApi, workspacePath) {
+  const environment = await checkProjectEnvironment(workspacePath);
+  if (environment.syftAvailable || environment.trivyAvailable) {
+    return true;
+  }
+
+  const selected = await vscodeApi.window.showWarningMessage(
+    t(vscodeApi, 'sbomToolsMissingMessage'),
+    t(vscodeApi, 'sbomToolsMissingSetupAction')
+  );
+
+  if (selected === t(vscodeApi, 'sbomToolsMissingSetupAction')) {
+    await vscodeApi.commands.executeCommand('sbomTool.installTools');
+  }
+
+  return false;
 }
 
 function buildVulnerabilityHtmlReport(scanResult, workspacePath) {
@@ -718,6 +642,7 @@ function getDashboardState(vscodeApi) {
 async function runGenerateSbom(vscodeApi) {
   const targetFolder = await pickTargetFolder(vscodeApi);
   if (!targetFolder) return;
+  if (!(await ensureSbomToolsInstalled(vscodeApi, targetFolder.uri.fsPath))) return;
 
   await vscodeApi.window.withProgress(
     {
@@ -784,6 +709,7 @@ async function runVulnerabilityScan(vscodeApi) {
 async function runGenerateAndScan(vscodeApi) {
   const targetFolder = await pickTargetFolder(vscodeApi);
   if (!targetFolder) return;
+  if (!(await ensureSbomToolsInstalled(vscodeApi, targetFolder.uri.fsPath))) return;
 
   await vscodeApi.window.withProgress(
     {
