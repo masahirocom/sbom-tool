@@ -1,7 +1,6 @@
 const vscode = require('vscode');
 const path = require('node:path');
 const fs = require('node:fs');
-const { execSync } = require('node:child_process');
 const { SbomDashboardViewProvider } = require('./lib/dashboardView');
 const { openResultFile } = require('./lib/reportViewer');
 const { t, getUiLanguage } = require('./lib/i18n');
@@ -11,6 +10,20 @@ const {
   scanVulnerabilities,
   formatVulnerabilitySummary,
 } = require('./lib/scanner');
+const {
+  escapeHtml,
+  timestampSuffix,
+  listResultFiles,
+  writeJsonFile,
+  writeTextFile,
+  isCommandAvailable,
+  getGroupKey,
+} = require('./lib/common');
+const {
+  describeComponentScope,
+  buildSbomHtmlReport,
+  buildVulnerabilityHtmlReport,
+} = require('./lib/report/builder');
 
 let dashboardViewProvider;
 
@@ -161,25 +174,7 @@ function ensureOutputDirectory(vscodeApi, workspacePath) {
   return outputPath;
 }
 
-function listResultFiles(outputPath) {
-  if (!fs.existsSync(outputPath)) {
-    return [];
-  }
 
-  return fs
-    .readdirSync(outputPath, { withFileTypes: true })
-    .filter((entry) => entry.isFile())
-    .map((entry) => {
-      const fullPath = path.join(outputPath, entry.name);
-      const stat = fs.statSync(fullPath);
-      return {
-        name: entry.name,
-        fullPath,
-        mtimeMs: stat.mtimeMs,
-      };
-    })
-    .sort((left, right) => right.mtimeMs - left.mtimeMs);
-}
 
 function findLatestByRules(resultFiles, rules) {
   for (const rule of rules) {
@@ -252,17 +247,6 @@ async function cleanOldResults(vscodeApi) {
   if (selected.label === 'delete-all') {
     deleteTargets = resultFiles;
   } else {
-    function getGroupKey(fileName) {
-      if (fileName.startsWith('sbom-raw-') && fileName.endsWith('.json')) return 'sbom-raw-json';
-      if (fileName.startsWith('sbom-cyclonedx-') && fileName.endsWith('.json')) return 'sbom-cyclonedx-json';
-      if (fileName.startsWith('sbom-spdx-')) return 'sbom-spdx';
-      if (fileName.startsWith('sbom-report-') && fileName.endsWith('.html')) return 'sbom-report-html';
-      if (fileName.startsWith('vulnerability-report-') && fileName.endsWith('.json')) return 'vulnerability-report-json';
-      if (fileName.startsWith('vulnerability-report-') && fileName.endsWith('.html')) return 'vulnerability-report-html';
-      if (fileName.startsWith('project-check-') && fileName.endsWith('.md')) return 'project-check-md';
-      return 'other';
-    }
-
     const latestByGroup = new Map();
     for (const file of resultFiles) {
       const key = getGroupKey(file.name);
@@ -289,171 +273,9 @@ async function cleanOldResults(vscodeApi) {
   }
 }
 
-function writeJsonFile(filePath, data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
-}
 
-function writeTextFile(filePath, text) {
-  fs.writeFileSync(filePath, text, 'utf-8');
-}
 
-function isCommandAvailable(command) {
-  try {
-    const checkCommand = process.platform === 'win32' ? `where ${command}` : `which ${command}`;
-    execSync(checkCommand, { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
-}
 
-function timestampSuffix() {
-  return new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-');
-}
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
-
-function describeComponentScope(component) {
-  if (component.scope) {
-    return component.scope;
-  }
-
-  if (component.isDirect) {
-    return 'required';
-  }
-
-  if (component.isTransitive) {
-    return 'indirect';
-  }
-
-  return 'unknown';
-}
-
-function buildSbomHtmlReport(sbomResult, workspacePath) {
-  const normalized = sbomResult.normalized || { components: [], dependencies: [], metadata: {} };
-  const components = Array.isArray(normalized.components) ? normalized.components : [];
-  const metadata = normalized.metadata || {};
-  const title = `SBOM Report - ${path.basename(workspacePath)}`;
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="color-scheme" content="light dark" />
-  <title>${escapeHtml(title)}</title>
-  <style>
-    :root {
-      --bg: #ffffff;
-      --fg: #1f2328;
-      --muted: #57606a;
-      --border: #d0d7de;
-      --panel: #f6f8fa;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #0d1117;
-        --fg: #c9d1d9;
-        --muted: #8b949e;
-        --border: #30363d;
-        --panel: #161b22;
-      }
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      padding: 24px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      color: var(--fg);
-      background: var(--bg);
-    }
-    h1, h2 { margin: 0 0 8px 0; }
-    h1 { font-size: 28px; }
-    h2 { font-size: 20px; }
-    p { margin: 0; }
-    .meta { color: var(--muted); margin-bottom: 18px; }
-    .summary {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 12px;
-      margin-bottom: 16px;
-      line-height: 1.6;
-    }
-    .section { margin-top: 20px; }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 8px;
-    }
-    th, td {
-      border: 1px solid var(--border);
-      padding: 8px;
-      text-align: left;
-      vertical-align: top;
-      font-size: 13px;
-    }
-    th {
-      background: var(--panel);
-      font-weight: 600;
-    }
-    code {
-      font-family: SFMono-Regular, Consolas, monospace;
-      font-size: 12px;
-      word-break: break-all;
-    }
-  </style>
-</head>
-<body>
-  <h1>${escapeHtml(title)}</h1>
-  <p class="meta">Generated at ${escapeHtml(metadata.timestamp)} using ${escapeHtml(metadata.sbomGenerator || sbomResult.generator || 'unknown')} (${escapeHtml(metadata.generatorVersion || 'unknown version')})</p>
-  <div class="summary">
-    <div>Project: ${escapeHtml(metadata.projectName || path.basename(workspacePath))}</div>
-    <div>Version: ${escapeHtml(metadata.projectVersion || 'unknown')}</div>
-    <div>Components: ${escapeHtml(components.length)}</div>
-    <div>Format: ${escapeHtml(sbomResult.exportFormat || metadata.sourceFormat || 'unknown')}</div>
-    <div>Generator: ${escapeHtml(metadata.sbomGenerator || sbomResult.generator || 'unknown')}</div>
-    ${metadata.warning ? `<div>Note: ${escapeHtml(metadata.warning)}</div>` : ''}
-  </div>
-
-  <div class="section">
-    <h2>Component List</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Version</th>
-          <th>Type</th>
-          <th>Scope</th>
-          <th>Licenses</th>
-          <th>PURL / Ref</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${components.length === 0
-          ? `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px;">No components detected. If you expected results, check that Syft or Trivy scanned the correct directory and that lock files are present.</td></tr>`
-          : components.slice(0, 500).map((component) => `
-        <tr>
-          <td>${escapeHtml(component.name || '')}</td>
-          <td>${escapeHtml(component.version || '')}</td>
-          <td>${escapeHtml(component.type || '')}</td>
-          <td>${escapeHtml(describeComponentScope(component))}</td>
-          <td>${escapeHtml(Array.isArray(component.licenses) && component.licenses.length > 0 ? component.licenses.join(', ') : '-')}</td>
-          <td><code>${escapeHtml(component.purl || component.id || '')}</code></td>
-        </tr>`).join('')}
-      </tbody>
-    </table>
-  </div>
-</body>
-</html>`;
-}
 
 async function ensureSbomToolsInstalled(vscodeApi, workspacePath) {
   const environment = await checkProjectEnvironment(workspacePath);
@@ -473,158 +295,7 @@ async function ensureSbomToolsInstalled(vscodeApi, workspacePath) {
   return false;
 }
 
-function buildVulnerabilityHtmlReport(scanResult, workspacePath) {
-  const title = `Vulnerability Report - ${path.basename(workspacePath)}`;
 
-  function escapeHtml(value) {
-    return String(value ?? '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
-  }
-
-  function toSafeLink(url, label) {
-    const value = String(url || '').trim();
-    if (!/^https?:\/\//i.test(value)) {
-      return '';
-    }
-    return `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label || value)}</a>`;
-  }
-
-  function buildReferenceCell(item) {
-    const cveIds = new Set();
-    const advisoryIds = new Set();
-    const candidates = [item.cveId, item.title, item.description, item.reference, item.url];
-
-    for (const candidate of candidates) {
-      const text = String(candidate || '');
-      const matches = text.match(/CVE-\d{4}-\d+/gi) || [];
-      for (const match of matches) {
-        cveIds.add(match.toUpperCase());
-      }
-
-      const ghsaMatches = text.match(/GHSA-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}/gi) || [];
-      for (const match of ghsaMatches) {
-        advisoryIds.add(match.toUpperCase());
-      }
-    }
-
-    const links = [];
-
-    if (cveIds.size > 0) {
-      links.push(
-        ...Array.from(cveIds)
-          .sort()
-          .map((cveId) => {
-            const nvdUrl = `https://nvd.nist.gov/vuln/detail/${encodeURIComponent(cveId)}`;
-            return toSafeLink(nvdUrl, cveId);
-          })
-          .filter(Boolean)
-      );
-    }
-
-    if (advisoryIds.size > 0) {
-      links.push(
-        ...Array.from(advisoryIds)
-          .sort()
-          .map((advisoryId) => {
-            const ghsaUrl = `https://github.com/advisories/${encodeURIComponent(advisoryId)}`;
-            return toSafeLink(ghsaUrl, advisoryId);
-          })
-          .filter(Boolean)
-      );
-    }
-
-    const fallbackReference = toSafeLink(item.url || item.reference, 'Advisory');
-    if (links.length === 0 && fallbackReference) {
-      links.push(fallbackReference);
-    }
-
-    return links.length > 0 ? links.join('<br/>') : '-';
-  }
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="color-scheme" content="light dark" />
-  <title>${escapeHtml(title)}</title>
-  <style>
-    :root {
-      --bg: #ffffff;
-      --fg: #1f2328;
-      --muted: #57606a;
-      --border: #d0d7de;
-      --panel: #f6f8fa;
-      --link: #0969da;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #0d1117;
-        --fg: #e6edf3;
-        --muted: #9da7b3;
-        --border: #30363d;
-        --panel: #161b22;
-        --link: #58a6ff;
-      }
-    }
-
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 24px; color: var(--fg); background: var(--bg); }
-    h1 { margin-bottom: 8px; }
-    .meta { color: var(--muted); margin-bottom: 16px; }
-    .pill { display:inline-block; margin-right:8px; margin-bottom:8px; padding: 4px 10px; border-radius: 999px; background: var(--panel); border:1px solid var(--border); font-size:12px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-    th, td { border: 1px solid var(--border); padding: 8px; font-size: 12px; text-align: left; vertical-align: top; }
-    th { background: var(--panel); }
-    a { color: var(--link); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-  </style>
-</head>
-<body>
-  <h1>${escapeHtml(title)}</h1>
-  <div class="meta">Generated at: ${escapeHtml(scanResult.timestamp)}</div>
-  <div class="pill">Source: ${escapeHtml(scanResult.source)}</div>
-  <div class="pill">Total: ${escapeHtml(scanResult.totalVulnerabilities)}</div>
-  <div class="pill">Critical: ${escapeHtml(scanResult.critical)}</div>
-  <div class="pill">High: ${escapeHtml(scanResult.high)}</div>
-  <div class="pill">Moderate: ${escapeHtml(scanResult.moderate)}</div>
-  <div class="pill">Low: ${escapeHtml(scanResult.low)}</div>
-  <div class="pill">Fixable Packages: ${escapeHtml(scanResult.fixable)}</div>
-  <p>${escapeHtml(scanResult.summary)}</p>
-  <table>
-    <thead>
-      <tr>
-        <th>Package</th>
-        <th>Severity</th>
-        <th>Title</th>
-        <th>Current</th>
-        <th>Fix</th>
-        <th>CVE / Advisory</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${(scanResult.vulnerabilities || [])
-        .slice(0, 200)
-        .map(
-          (item) => `
-      <tr>
-        <td>${escapeHtml(item.packageName || '')}</td>
-        <td>${escapeHtml(item.severity || '')}</td>
-        <td>${escapeHtml(item.title || '')}</td>
-        <td>${escapeHtml(item.currentVersion || item.affectedRange || '')}</td>
-        <td>${escapeHtml(item.proposedFix || '')}</td>
-        <td>${buildReferenceCell(item)}</td>
-      </tr>`
-        )
-        .join('')}
-    </tbody>
-  </table>
-</body>
-</html>`;
-}
 
 function buildProjectCheckMarkdown(environment, workspacePath) {
   let recommendation;
